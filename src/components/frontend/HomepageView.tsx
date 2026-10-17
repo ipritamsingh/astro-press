@@ -95,8 +95,8 @@ export const HomepageView: React.FC<Props> = ({
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
-                    <span>{post.author}</span>
-                    <span>{new Date(post.pubDate).toLocaleDateString()}</span>
+<span>{post.author}</span>
+        <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
                   </div>
                 </div>
               </article>
@@ -204,7 +204,7 @@ export const HomepageView: React.FC<Props> = ({
                   <div className="relative z-10 p-6 sm:p-10 md:p-16 max-w-4xl space-y-6">
                     <div className="flex flex-wrap items-center gap-3">
                       <span
-                        style={{ backgroundColor: themeSettings.primaryColor }}
+                        style={{ backgroundColor: 'var(--ap-primary)' }}
                         className="text-xs uppercase font-extrabold tracking-wider text-white px-3 py-1 rounded-full shadow-xs"
                       >
                         {heroPost.category}
@@ -251,7 +251,7 @@ export const HomepageView: React.FC<Props> = ({
 
                       <button
                         onClick={() => onSelectPost(heroPost)}
-                        style={{ backgroundColor: themeSettings.primaryColor }}
+                        style={{ backgroundColor: 'var(--ap-primary)' }}
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white hover:opacity-95 transition-all shadow-md"
                       >
                         <span>Read Full Story</span>
@@ -291,7 +291,7 @@ export const HomepageView: React.FC<Props> = ({
                       >
                         <div
                           className="h-2 w-8 rounded-full transition-all group-hover:w-12"
-                          style={{ backgroundColor: cat.color || themeSettings.primaryColor }}
+                          style={{ backgroundColor: cat.color || 'var(--ap-primary)' }}
                         />
                         <h3 className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors">
                           {cat.name}
@@ -343,7 +343,7 @@ export const HomepageView: React.FC<Props> = ({
                       <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <span>{new Date(post.pubDate).toLocaleDateString()}</span>
+                            <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
                             <span>•</span>
                             <span>{post.readingTime} min read</span>
                           </div>
@@ -418,7 +418,7 @@ export const HomepageView: React.FC<Props> = ({
 
                         <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
                           <span>{post.author}</span>
-                          <span>{new Date(post.pubDate).toLocaleDateString()}</span>
+                          <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
                         </div>
                       </div>
                     </article>

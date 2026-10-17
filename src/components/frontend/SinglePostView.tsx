@@ -327,7 +327,7 @@ export const SinglePostView: React.FC<Props> = ({
                     <div>
                       <span className="text-sm font-bold text-slate-900 block">{comm.authorName}</span>
                       <span className="text-[11px] text-slate-400">
-                        {new Date(comm.date).toLocaleDateString()}
+                        {new Date(comm.date).toLocaleDateString('en-US')}
                       </span>
                     </div>
                   </div>

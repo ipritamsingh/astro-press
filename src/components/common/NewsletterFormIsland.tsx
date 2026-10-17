@@ -49,9 +49,9 @@ export const NewsletterFormIsland: React.FC<Props> = ({
         setErrorMessage(data.error || 'Failed to subscribe. Please try again.');
       }
     } catch {
-      // Offline fallback: still succeed gracefully
-      setIsSubscribed(true);
-      setSubscriptionMessage(successMsg);
+      // Previously this reported success on any network error, silently losing
+      // the address. Report the real failure instead.
+      setErrorMessage('Subscription failed. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }

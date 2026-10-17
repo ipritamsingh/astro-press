@@ -1,8 +1,49 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import App from '../App';
+import { getCollection } from 'astro:content';
+import { parseMarkdownToBlocks } from '../components/common/GutenbergBlockRenderer';
+import siteSettingsJson from '../data/siteSettings.json';
+
+const siteSettings: any = (siteSettingsJson as any) || {};
+const siteTitle: string = siteSettings.siteTitle || 'AstroPress';
+
+const pages = await getCollection('pages');
+const source = pages.find(
+  (p) => (p.data.slug || p.id.replace(/\.md$/, '')) === 'contact'
+);
+
+const initialPage: any = source
+  ? {
+      id: source.id,
+      title: source.data.title,
+      slug: source.data.slug || source.id.replace(/\.md$/, ''),
+      status: source.data.draft ? 'draft' : 'published',
+      template: source.data.template || 'contact',
+      blocks:
+        source.data.blocks && source.data.blocks.length > 0
+          ? source.data.blocks
+          : parseMarkdownToBlocks(source.body || ''),
+      body: source.body || '',
+    }
+  : null;
+
+const seo: any = (source?.data as any)?.seo || {};
 ---
 
-<Layout title="Contact Us — AstroPress">
-  <App client:only="react" />
+<Layout
+  title={seo.metaTitle || (initialPage ? `${initialPage.title} — ${siteTitle}` : `Contact — ${siteTitle}`)}
+  description={seo.metaDescription || `Get in touch with the ${siteTitle} team.`}
+  robotsDirective="index, follow"
+>
+  {initialPage && (
+    <script is:inline define:vars={{ initialPage }}>
+      window.__ASTROPRESS_INITIAL_PAGE__ = initialPage;
+    </script>
+  )}
+  <App
+    client:load
+    seed={initialPage ? { pages: [initialPage] } : undefined}
+    initialRoute={initialPage ? { type: 'page', page: initialPage } : { type: 'home' }}
+  />
 </Layout>

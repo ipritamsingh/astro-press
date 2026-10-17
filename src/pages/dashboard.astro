@@ -1,8 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import App from '../App';
+import siteSettingsJson from '../data/siteSettings.json';
+
+const siteTitle = (siteSettingsJson as any)?.siteTitle || 'AstroPress';
 ---
 
-<Layout title="AstroPress Dashboard">
+<!-- /dashboard is the admin login gate and must never be indexed. -->
+<Layout title={`${siteTitle} Dashboard`} robotsDirective="noindex, nofollow">
   <App client:only="react" />
 </Layout>

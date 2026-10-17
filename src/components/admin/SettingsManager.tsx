@@ -19,7 +19,7 @@ export const SettingsManager: React.FC<Props> = ({
 }) => {
   const [siteName, setSiteName] = useState(siteSettings?.siteTitle || themeSettings.siteName);
   const [tagline, setTagline] = useState(siteSettings?.siteTagline || themeSettings.tagline);
-  const [adminEmail, setAdminEmail] = useState('amitsinghpritam@gmail.com');
+  const [adminEmail, setAdminEmail] = useState(siteSettings?.adminEmail || '');
   const [postsPerPage, setPostsPerPage] = useState(siteSettings?.postsPerPage || 6);
   const [postsPerPageInput, setPostsPerPageInput] = useState<string>((siteSettings?.postsPerPage || 6).toString());
   const [permalinkStructure, setPermalinkStructure] = useState(
@@ -139,6 +139,7 @@ export const SettingsManager: React.FC<Props> = ({
       onUpdateSiteSettings({
         siteTitle: siteName,
         siteTagline: tagline,
+        adminEmail: adminEmail.trim(),
         postsPerPage,
         permalinkStructure,
         pagePermalinkStructure,

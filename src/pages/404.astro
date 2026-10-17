@@ -1,0 +1,42 @@
+---
+import Layout from '../layouts/Layout.astro';
+import siteSettingsJson from '../data/siteSettings.json';
+
+const settings: any = (siteSettingsJson as any) || {};
+const siteTitle: string = settings.siteTitle || 'AstroPress';
+---
+
+<!--
+  A real 404 page. Previously the project had none, so Cloudflare Pages served
+  its default fallback for any unknown URL, which search engines treat as a
+  soft 404 and users see as a generic hosting error.
+-->
+<Layout title={`Page Not Found — ${siteTitle}`} robotsDirective="noindex, follow">
+  <main class="flex-1 max-w-2xl mx-auto py-20 px-6 text-center">
+    <p class="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Error 404</p>
+    <h1 class="text-4xl sm:text-5xl font-extrabold text-slate-900 mb-4">Page not found</h1>
+    <p class="text-sm text-slate-600 mb-8">
+      The page you were looking for does not exist, or it may have been moved or renamed.
+    </p>
+    <div class="flex flex-wrap items-center justify-center gap-3">
+      <a
+        href="/"
+        class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors"
+      >
+        Back to Home
+      </a>
+      <a
+        href="/posts/"
+        class="px-5 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-bold transition-colors"
+      >
+        Browse Articles
+      </a>
+      <a
+        href="/contact/"
+        class="px-5 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-bold transition-colors"
+      >
+        Contact
+      </a>
+    </div>
+  </main>
+</Layout>

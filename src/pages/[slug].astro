@@ -3,6 +3,13 @@ import Layout from '../layouts/Layout.astro';
 import App from '../App';
 import { getCollection } from 'astro:content';
 import { parseMarkdownToBlocks } from '../components/common/GutenbergBlockRenderer';
+import siteSettingsJson from '../data/siteSettings.json';
+
+const siteSettings: any = (siteSettingsJson as any) || {};
+const siteTitle: string = siteSettings.siteTitle || 'AstroPress';
+const siteTagline: string = siteSettings.siteTagline || '';
+const siteUrl: string = siteSettings.siteUrl || '';
+const defaultOgImage: string | undefined = siteSettings.defaultOgImage || undefined;
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -33,29 +40,51 @@ export async function getStaticPaths() {
 }
 
 const { post, page, isPage } = Astro.props as any;
-const pageTitle = isPage ? `${page.data.title} — AstroPress` : `${post.data.title} — AstroPress`;
-const pageDescription = isPage ? '' : (post?.data?.excerpt || '');
-const pageOgImage = isPage ? '' : (post?.data?.featuredImage || '');
----
 
-<Layout title={pageTitle} description={pageDescription} ogImage={pageOgImage}>
-  {isPage ? (
-    <script is:inline define:vars={{ initialPage: {
-      id: page.id,
-      title: page.data.title,
-      slug: page.data.slug || page.id.replace(/\.md$/, ''),
-      status: page.data.draft ? 'draft' : 'published',
-      template: page.data.template || 'default',
-      blocks: (page.data.blocks && page.data.blocks.length > 0) ? page.data.blocks : parseMarkdownToBlocks(page.body || ''),
-      body: page.body || '',
-    } }}>
-      window.__ASTROPRESS_INITIAL_PAGE__ = initialPage;
-    </script>
-  ) : (
-    <script is:inline define:vars={{ initialPost: {
+// Honour admin-authored per-post/per-page SEO overrides, falling back to content.
+const seo = isPage ? (page?.data?.seo || {}) : (post?.data?.seo || {});
+const entrySlug = isPage
+  ? (page?.data?.slug || page?.id?.replace(/\.md$/, '') || '')
+  : (post?.data?.slug || post?.id?.replace(/\.md$/, '') || '');
+const pageTitle = seo.metaTitle
+  || (isPage ? `${page.data.title}` : `${post.data.title}`)
+  || siteTitle;
+
+// An empty string here would defeat the Layout default and emit
+// <meta name="description" content="">. Use the authored value, then the
+// excerpt, then a sensible slice of body text.
+const pageDescription = seo.metaDescription
+  || (isPage ? '' : (post?.data?.excerpt || ''))
+  || `Read "${isPage ? page.data.title : post.data.title}" on ${siteTitle}.`;
+
+const rawOgImage = seo.ogImage || (isPage ? '' : (post?.data?.featuredImage || ''));
+// Open Graph requires absolute URLs; local uploads are stored as /uploads/x.webp.
+const pageOgImage = rawOgImage
+  ? (/^https?:\/\//i.test(rawOgImage) ? rawOgImage : `${siteUrl.replace(/\/+$/, '')}${rawOgImage.startsWith('/') ? '' : '/'}${rawOgImage}`)
+  : defaultOgImage;
+
+// The "home" page duplicates the site root at /home/. Point it at / and keep it
+// out of the index instead of competing with the homepage. Note this entry lives
+// in the pages collection, so it must be matched on slug alone, not on isPage.
+const isHomeAlias = entrySlug === 'home';
+const canonicalForEntry = isHomeAlias
+  ? `${siteUrl.replace(/\/+$/, '')}/`
+  : seo.canonicalUrl
+    || `${siteUrl.replace(/\/+$/, '')}/${entrySlug.replace(/^\/+|\/+$/g, '')}/`;
+
+const robotsForEntry = isHomeAlias
+  ? 'noindex, follow'
+  : seo.robotsIndex === false
+    ? 'noindex, follow'
+    : 'index, follow';
+
+// Shared by the island prop (static HTML) and the inline global (client router).
+const initialPost = isPage
+  ? null
+  : {
       id: post.id,
       title: post.data.title,
-      slug: post.data.slug || post.id.replace(/\.md$/, ''),
+      slug: entrySlug,
       pubDate: post.data.pubDate ? new Date(post.data.pubDate).toISOString() : new Date().toISOString(),
       status: post.data.draft ? 'draft' : (post.data.status || 'published'),
       author: post.data.author,
@@ -68,9 +97,46 @@ const pageOgImage = isPage ? '' : (post?.data?.featuredImage || '');
       blocks: (post.data.blocks && post.data.blocks.length > 0) ? post.data.blocks : parseMarkdownToBlocks(post.body || ''),
       body: post.body || '',
       seo: post.data.seo || {},
-    } }}>
+    };
+
+const initialPage = isPage
+  ? {
+      id: page.id,
+      title: page.data.title,
+      slug: entrySlug,
+      status: page.data.draft ? 'draft' : 'published',
+      template: page.data.template || 'default',
+      blocks: (page.data.blocks && page.data.blocks.length > 0) ? page.data.blocks : parseMarkdownToBlocks(page.body || ''),
+      body: page.body || '',
+    }
+  : null;
+---
+
+<Layout
+  title={isHomeAlias ? `${siteTitle} — ${siteTagline}` : `${pageTitle} — ${siteTitle}`}
+  description={pageDescription}
+  ogImage={pageOgImage}
+  ogType={isPage ? 'website' : 'article'}
+  canonicalUrl={canonicalForEntry}
+  robotsDirective={robotsForEntry}
+>
+  {isPage ? (
+    <script is:inline define:vars={{ initialPage }}>
+      window.__ASTROPRESS_INITIAL_PAGE__ = initialPage;
+    </script>
+    <App
+      client:load
+      seed={{ pages: [initialPage!] }}
+      initialRoute={{ type: 'page', page: initialPage! }}
+    />
+  ) : (
+    <script is:inline define:vars={{ initialPost }}>
       window.__ASTROPRESS_INITIAL_POST__ = initialPost;
     </script>
+    <App
+      client:load
+      seed={{ posts: [initialPost!] }}
+      initialRoute={{ type: 'post', post: initialPost! }}
+    />
   )}
-  <App client:only="react" />
 </Layout>

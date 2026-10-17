@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Menu as MenuIcon, X } from 'lucide-react';
 import { SearchModal } from '../frontend/SearchModal';
 import { Post, Page, Category, MenuItem } from '../../types/cms';
@@ -20,6 +20,20 @@ export const HeaderControlsIsland: React.FC<Props> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Ctrl/Cmd+K actually opens search. The shortcut was advertised in the button
+  // title and the visible kbd hint, but no handler existed anywhere, so the key
+  // combination did nothing at all.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const handleSelectPost = (post: Post) => {
     setIsSearchOpen(false);
@@ -44,7 +58,7 @@ export const HeaderControlsIsland: React.FC<Props> = ({
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Search...</span>
             <kbd className="hidden sm:inline bg-slate-200 text-slate-600 text-[10px] px-1.5 py-0.5 rounded">
-              /
+              Ctrl K
             </kbd>
           </button>
         )}

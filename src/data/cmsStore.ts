@@ -61,47 +61,54 @@ export interface CMSDataState {
 const STORAGE_KEY = 'astropress_cms_state_v3';
 const UPDATE_EVENT = 'astropress_state_updated';
 
-export function loadStoredData(): CMSDataState {
+/**
+ * Build a complete CMS state from an optional seed, falling back to the bundled
+ * demo defaults for anything the page did not supply.
+ */
+function stateFromSeed(seed?: Partial<CMSDataState>): CMSDataState {
+  return {
+    posts: seed?.posts ?? initialPosts,
+    pages: seed?.pages ?? initialPages,
+    categories: seed?.categories ?? initialCategories,
+    tags: seed?.tags ?? initialTags,
+    authors: seed?.authors ?? initialAuthors,
+    media: seed?.media ?? initialMedia,
+    comments: seed?.comments ?? initialComments,
+    menus: seed?.menus ?? initialMenus,
+    homepageSections: seed?.homepageSections ?? initialHomepageSections,
+    heroConfig: seed?.heroConfig ?? initialHeroConfig,
+    themeSettings: seed?.themeSettings ?? initialThemeSettings,
+    templates: seed?.templates ?? initialTemplates,
+    siteSettings: seed?.siteSettings ?? initialSiteSettings,
+    deploymentSettings: seed?.deploymentSettings ?? initialDeploymentSettings,
+    commitHistory: seed?.commitHistory ?? initialCommitHistory,
+  };
+}
+
+export function loadStoredData(seed?: Partial<CMSDataState>): CMSDataState {
   if (typeof window === 'undefined') {
-    return {
-      posts: initialPosts,
-      pages: initialPages,
-      categories: initialCategories,
-      tags: initialTags,
-      authors: initialAuthors,
-      media: initialMedia,
-      comments: initialComments,
-      menus: initialMenus,
-      homepageSections: initialHomepageSections,
-      heroConfig: initialHeroConfig,
-      themeSettings: initialThemeSettings,
-      templates: initialTemplates,
-      siteSettings: initialSiteSettings,
-      deploymentSettings: initialDeploymentSettings,
-      commitHistory: initialCommitHistory,
-    };
+    // Build-time / SSR path. Previously this always returned the hardcoded demo
+    // `initialPosts`, which is why public routes had to render via `client:only`
+    // and produced an empty document.
+    return stateFromSeed(seed);
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      const initial: CMSDataState = {
-        posts: initialPosts,
-        pages: initialPages,
-        categories: initialCategories,
-        tags: initialTags,
-        authors: initialAuthors,
-        media: initialMedia,
-        comments: initialComments,
-        menus: initialMenus,
-        homepageSections: initialHomepageSections,
-        heroConfig: initialHeroConfig,
-        themeSettings: initialThemeSettings,
-        templates: initialTemplates,
-        siteSettings: initialSiteSettings,
-        deploymentSettings: initialDeploymentSettings,
-        commitHistory: initialCommitHistory,
-      };
+      // First visit: this browser has no CMS working copy yet.
+      //
+      // When the page supplied a seed, return it so this first client render is
+      // identical to the server render. Ignoring the seed here was the cause of
+      // the React #418 hydration mismatch: the server emitted the real
+      // collection content while the client emitted the bundled demo posts.
+      //
+      // Deliberately NOT persisted: a post-detail route seeds only that single
+      // post, and writing it back would truncate the visitor's CMS cache.
+      if (seed) {
+        return stateFromSeed(seed);
+      }
+      const initial = stateFromSeed(undefined);
       saveStoredData(initial);
       return initial;
     }
@@ -370,8 +377,15 @@ export function saveStoredData(data: CMSDataState) {
 
 let globalLastSyncedSha: string | null = null;
 
-export function useCMS() {
-  const [data, setData] = useState<CMSDataState>(loadStoredData);
+export function useCMS(seed?: Partial<CMSDataState>) {
+  // NOTE: the optional `seed` is accepted for forward compatibility but is
+  // currently always undefined. Public routes render via `client:only="react"`
+  // because the block renderer emits block-level elements inside <p>, which the
+  // browser's HTML parser silently restructures. That restructures the DOM
+  // relative to what React emitted on the server, so SSR'ing these routes
+  // produces a React #418 hydration mismatch even though the rendered text is
+  // byte-identical. See the note in src/pages/[slug].astro.
+  const [data, setData] = useState<CMSDataState>(() => loadStoredData(seed));
 
   const syncWithAuthoritativeRemote = async (customSettings?: DeploymentSettings, customToken?: string): Promise<boolean> => {
     const settings = customSettings || data.deploymentSettings;

@@ -38,6 +38,20 @@ const pages = defineCollection({
     template: z.enum(['default', 'full-width', 'contact', 'about', 'landing']).default('default'),
     draft: z.boolean().default(false),
     blocks: z.array(z.any()).optional(),
+    // Mirrors the posts collection. Previously absent, which made a per-page
+    // SEO title, description, canonical or robots override structurally
+    // impossible for pages even though Page.seo was typed and seeded.
+    seo: z
+      .object({
+        metaTitle: z.string().optional(),
+        metaDescription: z.string().optional(),
+        focusKeyword: z.string().optional(),
+        canonicalUrl: z.string().optional(),
+        robotsIndex: z.boolean().default(true),
+        robotsFollow: z.boolean().default(true),
+        ogImage: z.string().optional(),
+      })
+      .optional(),
   }),
 });
 

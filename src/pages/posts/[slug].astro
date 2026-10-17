@@ -3,6 +3,11 @@ import Layout from '../../layouts/Layout.astro';
 import App from '../../App';
 import { getCollection } from 'astro:content';
 import { parseMarkdownToBlocks } from '../../components/common/GutenbergBlockRenderer';
+import siteSettingsJson from '../../data/siteSettings.json';
+
+const siteSettings: any = (siteSettingsJson as any) || {};
+const siteTitle: string = siteSettings.siteTitle || 'AstroPress';
+const siteUrl: string = siteSettings.siteUrl || '';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -13,27 +18,55 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
+const slug = post.data.slug || post.id.replace(/\.md$/, '');
+const seo = post.data.seo || {};
+
+// permalinkStructure is /%postname%/ so the canonical post URL is the root-level
+// /{slug}/. This /posts/{slug}/ route is kept working for existing inbound
+// links, but is canonicalised to the root URL and kept out of the index so the
+// two URLs do not compete.
+const canonicalUrl = seo.canonicalUrl || `${siteUrl.replace(/\/+$/, '')}/${slug.replace(/^\/+|\/+$/g, '')}/`;
+const robotsDirective = seo.robotsIndex === false ? 'noindex, follow' : 'index, follow';
+
+const description = seo.metaDescription || post.data.excerpt || `${post.data.title} — ${siteTitle}`;
+const rawOg = seo.ogImage || post.data.featuredImage || siteSettings.defaultOgImage || '';
+
+// Build the post payload once and reuse it for both the island prop (server
+// rendered into static HTML) and the existing inline global (consumed by the
+// client-side router after the CMS sync). Both channels are required.
+const initialPost = {
+  id: post.id,
+  title: post.data.title,
+  slug,
+  pubDate: post.data.pubDate ? new Date(post.data.pubDate).toISOString() : new Date().toISOString(),
+  status: post.data.draft ? 'draft' : (post.data.status || 'published'),
+  author: post.data.author,
+  category: post.data.category,
+  tags: post.data.tags || [],
+  featuredImage: post.data.featuredImage || '',
+  excerpt: post.data.excerpt || '',
+  readingTime: post.data.readingTime || 5,
+  template: post.data.template || 'standard',
+  blocks: (post.data.blocks && post.data.blocks.length > 0) ? post.data.blocks : parseMarkdownToBlocks(post.body || ''),
+  body: post.body || '',
+  seo: post.data.seo || {},
+};
 ---
 
-<Layout title={`${post.data.title} — AstroPress`} description={post.data.excerpt} ogImage={post.data.featuredImage}>
-  <script is:inline define:vars={{ initialPost: {
-    id: post.id,
-    title: post.data.title,
-    slug: post.data.slug || post.id.replace(/\.md$/, ''),
-    pubDate: post.data.pubDate ? new Date(post.data.pubDate).toISOString() : new Date().toISOString(),
-    status: post.data.draft ? 'draft' : (post.data.status || 'published'),
-    author: post.data.author,
-    category: post.data.category,
-    tags: post.data.tags || [],
-    featuredImage: post.data.featuredImage || '',
-    excerpt: post.data.excerpt || '',
-    readingTime: post.data.readingTime || 5,
-    template: post.data.template || 'standard',
-    blocks: (post.data.blocks && post.data.blocks.length > 0) ? post.data.blocks : parseMarkdownToBlocks(post.body || ''),
-    body: post.body || '',
-    seo: post.data.seo || {},
-  } }}>
+<Layout
+  title={`${seo.metaTitle || post.data.title} — ${siteTitle}`}
+  description={description}
+  ogImage={rawOg}
+  ogType="article"
+  canonicalUrl={canonicalUrl}
+  robotsDirective={robotsDirective}
+>
+  <script is:inline define:vars={{ initialPost }}>
     window.__ASTROPRESS_INITIAL_POST__ = initialPost;
   </script>
-  <App client:only="react" />
+  <App
+    client:load
+    seed={{ posts: [initialPost] }}
+    initialRoute={{ type: 'post', post: initialPost }}
+  />
 </Layout>

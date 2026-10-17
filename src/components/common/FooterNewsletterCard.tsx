@@ -254,9 +254,9 @@ export const FooterNewsletterCard: React.FC<Props> = ({
         }
       }
     } catch {
-      setIsSubscribed(true);
-      setStatusMessage(successMsg);
-      setEmail('');
+      // Previously this reported a successful subscription even though nothing
+      // was stored, which silently lost every subscriber during any network error.
+      setErrorMessage('Subscription failed. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }

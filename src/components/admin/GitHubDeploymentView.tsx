@@ -87,7 +87,7 @@ export const GitHubDeploymentView: React.FC<Props> = ({
   onUpdateGithubSyncStatus,
   onSyncRemoteCMS,
 }) => {
-  const initialRepoString = deploymentSettings.githubRepo || 'ipritamsingh/astropress';
+  const initialRepoString = deploymentSettings.githubRepo || 'ipritamsingh/astro-press';
   const [initialOwner, initialRepoName] = initialRepoString.split('/');
 
   const [owner, setOwner] = useState(initialOwner || 'ipritamsingh');

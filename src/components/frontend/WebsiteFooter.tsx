@@ -118,7 +118,7 @@ export const WebsiteFooter: React.FC<Props> = ({
               >
                 {footer?.showBrandLogo !== false && (
                   <div
-                    style={{ backgroundColor: themeSettings.primaryColor }}
+                    style={{ backgroundColor: 'var(--ap-primary)' }}
                     className="h-10 w-10 rounded-xl flex items-center justify-center text-white font-extrabold text-xl shadow-xs"
                   >
                     A

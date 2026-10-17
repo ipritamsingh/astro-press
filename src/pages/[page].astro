@@ -2,6 +2,10 @@
 import Layout from '../layouts/Layout.astro';
 import App from '../App';
 import { getCollection } from 'astro:content';
+import siteSettingsJson from '../data/siteSettings.json';
+
+const siteSettings: any = (siteSettingsJson as any) || {};
+const siteTitle: string = siteSettings.siteTitle || 'AstroPress';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -16,11 +20,34 @@ export async function getStaticPaths() {
 }
 
 const { pageNum } = Astro.props;
+
+// Pagination routes are noindex, follow, but still ship real content so the
+// links they contain are crawlable.
+const collectionPosts = await getCollection('posts');
+const publishedPosts = collectionPosts
+  .filter((p) => !p.data.draft && p.data.status !== 'draft')
+  .map((post) => ({
+    id: post.id,
+    title: post.data.title,
+    slug: post.data.slug || post.id.replace(/\.md$/, ''),
+    pubDate: post.data.pubDate ? new Date(post.data.pubDate).toISOString() : new Date().toISOString(),
+    status: post.data.status || 'published',
+    author: post.data.author,
+    category: post.data.category,
+    tags: post.data.tags || [],
+    featuredImage: post.data.featuredImage || '',
+    excerpt: post.data.excerpt || '',
+    readingTime: post.data.readingTime || 5,
+    template: post.data.template || 'standard',
+    blocks: post.data.blocks || [],
+    body: post.body || '',
+    seo: post.data.seo || {},
+  }));
 ---
 
-<Layout title={`Page ${pageNum} — AstroPress`} robotsDirective="noindex, follow">
+<Layout title={`Page ${pageNum} — ${siteTitle}`} robotsDirective="noindex, follow">
   <script is:inline define:vars={{ pageNum }}>
     window.__ASTROPRESS_INITIAL_PAGE_NUM__ = pageNum;
   </script>
-  <App client:only="react" />
+  <App client:load seed={{ posts: publishedPosts }} initialRoute={{ type: 'home', pageNum }} />
 </Layout>

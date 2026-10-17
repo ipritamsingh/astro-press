@@ -215,10 +215,7 @@ export const PostsManager: React.FC<Props> = ({
 
           {selectedPostIds.length > 0 && (
             <button
-              onClick={() => {
-                selectedPostIds.forEach(id => onDeletePost(id));
-                setSelectedPostIds([]);
-              }}
+              onClick={handleBulkDelete}
               className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold border border-rose-200 transition-colors"
             >
               Delete Selected ({selectedPostIds.length})
@@ -247,21 +244,27 @@ export const PostsManager: React.FC<Props> = ({
             <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500 select-none">
               <tr>
                 <th className="p-3.5 w-10 text-center">
-                  <button onClick={toggleSelectAll} className="text-slate-400 hover:text-slate-700">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    aria-label={selectedPostIds.length === filtered.length && filtered.length > 0 ? 'Deselect all posts' : 'Select all posts'}
+                    aria-pressed={selectedPostIds.length === filtered.length && filtered.length > 0}
+                    className="text-slate-400 hover:text-slate-700"
+                  >
                     {selectedPostIds.length === filtered.length && filtered.length > 0 ? (
-                      <CheckSquare className="h-4 w-4 text-blue-600" />
+                      <CheckSquare className="h-4 w-4 text-blue-600" aria-hidden="true" />
                     ) : (
-                      <Square className="h-4 w-4" />
+                      <Square className="h-4 w-4" aria-hidden="true" />
                     )}
                   </button>
                 </th>
-                <th className="p-3.5">Title</th>
-                <th className="p-3.5">Author</th>
-                <th className="p-3.5">Categories</th>
-                <th className="p-3.5">Tags</th>
-                <th className="p-3.5">{activeTab === 'trash' ? 'Deleted' : 'Status'}</th>
-                <th className="p-3.5">{activeTab === 'trash' ? 'Remaining' : 'Date'}</th>
-                <th className="p-3.5 text-right">Actions</th>
+                <th scope="col" className="p-3.5">Title</th>
+                <th scope="col" className="p-3.5">Author</th>
+                <th scope="col" className="p-3.5">Categories</th>
+                <th scope="col" className="p-3.5">Tags</th>
+                <th scope="col" className="p-3.5">{activeTab === 'trash' ? 'Deleted' : 'Status'}</th>
+                <th scope="col" className="p-3.5">{activeTab === 'trash' ? 'Remaining' : 'Date'}</th>
+                <th scope="col" className="p-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -338,7 +341,15 @@ export const PostsManager: React.FC<Props> = ({
                               </button>
                               <span className="text-slate-300">|</span>
                               <button
-                                onClick={() => onDeletePost(post.id)}
+                                onClick={() => {
+                                  // Previously no confirmation, so a stray click
+                                  // on this small text link silently trashed a post.
+                                  // Posts stay recoverable in the Trash tab for
+                                  // 30 days, so this is a reversible move.
+                                  if (confirm(`Move "${post.title}" to trash? You can restore it from the Trash tab within 30 days.`)) {
+                                    onDeletePost(post.id);
+                                  }
+                                }}
                                 className="text-rose-600 hover:underline"
                               >
                                 Trash

@@ -114,7 +114,7 @@ export const HeroSection: React.FC<Props> = ({
             }
             // Solid color
             return (
-              <span key={index} style={{ color: config.svgAccentColor || '#2563eb' }}>
+              <span key={index} style={{ color: 'var(--ap-accent)' }}>
                 {part}
               </span>
             );
@@ -229,13 +229,13 @@ export const HeroSection: React.FC<Props> = ({
   return (
     <section className={`relative transition-all duration-300 ${getPaddingY()}`}>
       <div
-        style={{
-          backgroundColor:
-            config.backgroundType === 'solid'
-              ? config.backgroundColor
-              : config.backgroundType === 'dark-slate'
-              ? '#090d16'
-              : undefined,
+style={{
+      backgroundColor:
+        config.backgroundType === 'solid'
+        ? config.backgroundColor
+        : config.backgroundType === 'dark-slate'
+        ? '#090d16'
+        : undefined,
           background:
             config.backgroundType === 'gradient-subtle'
               ? `linear-gradient(135deg, ${config.gradientFrom || '#eff6ff'} 0%, ${config.gradientTo || '#f8fafc'} 100%)`
@@ -272,10 +272,10 @@ export const HeroSection: React.FC<Props> = ({
             {/* Eyebrow Label */}
             {config.showEyebrow && config.eyebrowText && (
               <div
-                style={{
-                  backgroundColor: config.eyebrowBgColor || 'rgba(37, 99, 235, 0.08)',
-                  color: config.eyebrowTextColor || '#2563eb',
-                }}
+style={{
+      backgroundColor: 'var(--ap-hero-eyebrow-bg)',
+      color: 'var(--ap-hero-eyebrow-text)',
+    }}
                 className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-tight border border-blue-200/50 shadow-2xs"
               >
                 {renderEyebrowIcon()}
@@ -285,9 +285,9 @@ export const HeroSection: React.FC<Props> = ({
 
             {/* Main Heading */}
             <h1
-              style={{
-                color: config.backgroundType === 'dark-slate' ? '#ffffff' : config.textColor || '#0f172a',
-              }}
+style={{
+      color: config.backgroundType === 'dark-slate' ? '#ffffff' : 'var(--ap-hero-text)',
+    }}
               className={`${getHeadingSize()} font-extrabold tracking-tight leading-[1.12] text-balance`}
             >
               {renderHeading()}
@@ -296,12 +296,12 @@ export const HeroSection: React.FC<Props> = ({
             {/* Supporting Description */}
             {config.showDescription && config.description && (
               <p
-                style={{
-                  color:
-                    config.backgroundType === 'dark-slate'
-                      ? '#cbd5e1'
-                      : config.descriptionColor || '#475569',
-                }}
+style={{
+      color:
+        config.backgroundType === 'dark-slate'
+        ? '#cbd5e1'
+        : 'var(--ap-hero-desc)',
+    }}
                 className="text-base sm:text-lg leading-relaxed max-w-2xl text-pretty font-normal"
               >
                 {config.description}
@@ -314,10 +314,10 @@ export const HeroSection: React.FC<Props> = ({
                 {config.showPrimaryButton && config.primaryButtonText && (
                   <button
                     onClick={() => handleButtonClick(config.primaryButtonUrl || '/posts')}
-                    style={{
-                      backgroundColor: config.primaryButtonBgColor || config.svgAccentColor || '#2563eb',
-                      color: config.primaryButtonTextColor || '#ffffff',
-                    }}
+style={{
+      backgroundColor: 'var(--ap-hero-btn-bg)',
+      color: 'var(--ap-hero-btn-text)',
+    }}
                     className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm shadow-md hover:opacity-95 hover:shadow-lg transition-all active:scale-98"
                   >
                     <span>{config.primaryButtonText}</span>

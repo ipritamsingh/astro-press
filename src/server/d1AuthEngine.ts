@@ -505,13 +505,11 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       if (user.lockout_until) {
         const lockoutEnd = new Date(user.lockout_until).getTime();
         if (now < lockoutEnd) {
-          const remainingMinutes = Math.ceil((lockoutEnd - now) / 60000);
+          // Return the identical message/status used for every other credential
+          // failure. A distinct 429 here confirmed the username exists.
           return jsonResponse(
-            {
-              success: false,
-              error: `Account is temporarily locked due to repeated failed attempts. Please try again in ${remainingMinutes} minutes.`,
-            },
-            429
+            { success: false, error: 'Invalid username or password.' },
+            401
           );
         } else {
           await env.DB.prepare('UPDATE admin_users SET lockout_until = NULL, failed_login_attempts = 0 WHERE id = ?')
@@ -522,22 +520,29 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       const isValid = await verifyPassword(password, user.password_hash, user.password_salt);
       if (!isValid) {
-        const failedAttempts = (user.failed_login_attempts || 0) + 1;
-        let lockoutUntil: string | null = null;
-        let errorMsg = 'Invalid username or password.';
-
-        if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
-          lockoutUntil = new Date(now + LOCKOUT_DURATION_MS).toISOString();
-          errorMsg = 'Too many failed login attempts. Account temporarily locked for 15 minutes.';
-        }
-
+        // Atomic increment: a read-modify-write here allowed concurrent requests
+        // to all read the same counter and overwrite each other, defeating the lockout.
         await env.DB.prepare(
-          'UPDATE admin_users SET failed_login_attempts = ?, lockout_until = ? WHERE id = ?'
+          'UPDATE admin_users SET failed_login_attempts = failed_login_attempts + 1, updated_at = ? WHERE id = ?'
         )
-          .bind(failedAttempts, lockoutUntil, user.id)
+          .bind(new Date().toISOString(), user.id)
           .run();
 
-        return jsonResponse({ success: false, error: errorMsg }, 401);
+        const counter = await env.DB.prepare(
+          'SELECT failed_login_attempts, lockout_until FROM admin_users WHERE id = ?'
+        )
+          .bind(user.id)
+          .first();
+
+        let lockoutUntil: string | null = counter?.lockout_until || null;
+        if ((counter?.failed_login_attempts || 0) >= MAX_FAILED_ATTEMPTS) {
+          lockoutUntil = new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString();
+          await env.DB.prepare('UPDATE admin_users SET lockout_until = ? WHERE id = ?')
+            .bind(lockoutUntil, user.id)
+            .run();
+        }
+
+        return jsonResponse({ success: false, error: 'Invalid username or password.' }, 401);
       }
 
       const nowIso = new Date().toISOString();
@@ -587,6 +592,22 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const username = (body.username || '').trim();
       const code = (body.code || '').trim().replace(/-/g, '').toUpperCase();
 
+      // Recovery codes bypass the password lockout entirely, so this route needs
+      // its own throttle and must not confirm whether the username exists.
+      const genericRecoveryError = 'Invalid username or recovery code.';
+      const recoveryClientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
+      const recentRecoveryFailures = await env.DB.prepare(
+        `SELECT COUNT(*) as count FROM auth_audit_logs
+         WHERE action = 'RECOVERY_LOGIN_FAILED' AND ip_address = ?
+           AND datetime(timestamp) > datetime('now', '-15 minutes')`
+      )
+        .bind(recoveryClientIp)
+        .first();
+
+      if ((recentRecoveryFailures?.count || 0) >= MAX_FAILED_ATTEMPTS) {
+        return jsonResponse({ success: false, error: genericRecoveryError }, 429);
+      }
+
       const user = await env.DB.prepare(
         'SELECT * FROM admin_users WHERE LOWER(username) = LOWER(?) AND is_active = 1 LIMIT 1'
       )
@@ -594,7 +615,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         .first();
 
       if (!user) {
-        return jsonResponse({ success: false, error: 'Invalid username or recovery code.' }, 401);
+        await env.DB.prepare(
+          `INSERT INTO auth_audit_logs (id, user_id, action, ip_address, success, details, timestamp)
+           VALUES (?, NULL, 'RECOVERY_LOGIN_FAILED', ?, 0, ?, ?)`
+        )
+          .bind('log-' + Date.now(), recoveryClientIp, 'Unknown username.', new Date().toISOString())
+          .run();
+        return jsonResponse({ success: false, error: genericRecoveryError }, 401);
       }
 
       const codeHash = await hashSha256(code);
@@ -605,7 +632,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         .first();
 
       if (!match) {
-        return jsonResponse({ success: false, error: 'Invalid or already used recovery code.' }, 401);
+        await env.DB.prepare(
+          `INSERT INTO auth_audit_logs (id, user_id, action, ip_address, success, details, timestamp)
+           VALUES (?, ?, 'RECOVERY_LOGIN_FAILED', ?, 0, ?, ?)`
+        )
+          .bind('log-' + Date.now(), user.id, recoveryClientIp, 'Invalid recovery code.', new Date().toISOString())
+          .run();
+        return jsonResponse({ success: false, error: genericRecoveryError }, 401);
       }
 
       const nowIso = new Date().toISOString();
@@ -806,16 +839,29 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     const tokenHash = await hashSha256(token);
+    const gateNow = Date.now();
     const sessionUser = await env.DB.prepare(
       `SELECT s.id as session_id, u.*
        FROM admin_sessions s
        JOIN admin_users u ON s.user_id = u.id
-       WHERE s.token_hash = ? AND u.is_active = 1 LIMIT 1`
+       WHERE s.token_hash = ? AND u.is_active = 1
+         AND s.expires_at > ?
+         AND datetime(s.last_active_at) > datetime(?, ?)
+       LIMIT 1`
     )
-      .bind(tokenHash)
+      .bind(
+        tokenHash,
+        new Date(gateNow).toISOString(),
+        new Date(gateNow).toISOString(),
+        `-${Math.floor(SESSION_IDLE_TIMEOUT_MS / 1000)} seconds`
+      )
       .first();
 
     if (!sessionUser) {
+      // Purge the stale row so an expired token cannot be replayed later.
+      await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash = ?')
+        .bind(tokenHash)
+        .run();
       return jsonResponse({ error: 'Unauthorized or expired session.' }, 401, {
         'Set-Cookie': clearSessionCookie(),
       });
@@ -859,6 +905,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         newEmail = body.newEmail.trim().toLowerCase();
       }
 
+      let passwordChanged = false;
       if (body.newPassword) {
         if (body.newPassword.length < 8) {
           return jsonResponse({ success: false, error: 'New password must be at least 8 characters long.' }, 400);
@@ -869,6 +916,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         const pwdRes = await hashPassword(body.newPassword);
         newHash = pwdRes.hashHex;
         newSalt = pwdRes.saltHex;
+        passwordChanged = true;
       }
 
       await env.DB.prepare(
@@ -876,6 +924,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       )
         .bind(newUsername, newEmail, newHash, newSalt, new Date().toISOString(), sessionUser.id)
         .run();
+
+      if (passwordChanged) {
+        // A password change must invalidate every existing session for this user,
+        // including the one making the request (mirrors reset-password behaviour).
+        await env.DB.prepare('DELETE FROM admin_sessions WHERE user_id = ?')
+          .bind(sessionUser.id)
+          .run();
+        return jsonResponse({ success: true }, 200, { 'Set-Cookie': clearSessionCookie() });
+      }
 
       return jsonResponse({ success: true });
     }
@@ -929,6 +986,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           'UPDATE admin_users SET username = ?, email = ?, password_hash = ?, password_salt = ?, is_active = 1, failed_login_attempts = 0, lockout_until = NULL, updated_at = ? WHERE id = ?'
         )
           .bind(username, email, hashHex, saltHex, nowIso, existingBackup.id)
+          .run();
+        // Credential rotation must not leave previously-issued sessions valid.
+        await env.DB.prepare('DELETE FROM admin_sessions WHERE user_id = ?')
+          .bind(existingBackup.id)
           .run();
       } else {
         await env.DB.prepare(
@@ -1016,6 +1077,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // Route: GET /api/auth/audit-logs
     // ------------------------------------------------------------------------
     if (action === 'audit-logs') {
+      // Previously matched any HTTP method and any role, so a lower-trust
+      // backup_admin could read every audit record including IP addresses and
+      // free-text detail. Restrict to GET and to the primary admin.
+      if (request.method !== 'GET') {
+        return jsonResponse({ success: false, error: 'Method not allowed.' }, 405);
+      }
+      if (sessionUser.role !== 'primary_admin') {
+        return jsonResponse({ success: false, error: 'Unauthorized.' }, 403);
+      }
       const logs = await env.DB.prepare(
         'SELECT * FROM auth_audit_logs ORDER BY timestamp DESC LIMIT 50'
       ).all();
@@ -1038,6 +1108,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         }
       } catch {}
     }
-    return jsonResponse({ error: err.message || 'Internal Server Error' }, 500);
+    // Never return raw D1/SQLite error text: it discloses table names, column
+    // names and constraint names to unauthenticated callers.
+    console.error('[D1 Auth Engine] Unhandled error:', err?.message || err);
+    return jsonResponse({ error: 'Internal Server Error' }, 500);
   }
 };

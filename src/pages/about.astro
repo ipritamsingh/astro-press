@@ -1,8 +1,56 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import App from '../App';
+import { getCollection } from 'astro:content';
+import { parseMarkdownToBlocks } from '../components/common/GutenbergBlockRenderer';
+import siteSettingsJson from '../data/siteSettings.json';
+
+const siteSettings: any = (siteSettingsJson as any) || {};
+const siteTitle: string = siteSettings.siteTitle || 'AstroPress';
+
+// Prefer the authored collection entry so admin edits to src/content/pages/about.md
+// reach the rendered page. Fall back to the seeded page when absent so the route
+// still renders rather than erroring at build time.
+const pages = await getCollection('pages');
+const source = pages.find(
+  (p) => (p.data.slug || p.id.replace(/\.md$/, '')) === 'about'
+);
+
+const initialPage: any = source
+  ? {
+      id: source.id,
+      title: source.data.title,
+      slug: source.data.slug || source.id.replace(/\.md$/, ''),
+      status: source.data.draft ? 'draft' : 'published',
+      template: source.data.template || 'about',
+      blocks:
+        source.data.blocks && source.data.blocks.length > 0
+          ? source.data.blocks
+          : parseMarkdownToBlocks(source.body || ''),
+      body: source.body || '',
+    }
+  : null;
+
+const seo: any = (source?.data as any)?.seo || {};
+const description =
+  seo.metaDescription ||
+  (initialPage?.body ? String(initialPage.body).replace(/[#*_>`-]/g, ' ').trim().slice(0, 155) : '') ||
+  `About ${siteTitle}.`;
 ---
 
-<Layout title="About — AstroPress">
-  <App client:only="react" />
+<Layout
+  title={seo.metaTitle || (initialPage ? `${initialPage.title} — ${siteTitle}` : `About — ${siteTitle}`)}
+  description={description}
+  robotsDirective="index, follow"
+>
+  {initialPage && (
+    <script is:inline define:vars={{ initialPage }}>
+      window.__ASTROPRESS_INITIAL_PAGE__ = initialPage;
+    </script>
+  )}
+  <App
+    client:load
+    seed={initialPage ? { pages: [initialPage] } : undefined}
+    initialRoute={initialPage ? { type: 'page', page: initialPage } : { type: 'home' }}
+  />
 </Layout>

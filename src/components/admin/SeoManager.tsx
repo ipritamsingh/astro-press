@@ -137,6 +137,9 @@ export const SeoManager: React.FC<Props> = ({
       defaultOgImage,
       seoSocialProfiles,
       indexingSettings,
+      // Previously only sent to onSaveSeoSettings, whose payload was discarded,
+      // so the admin-entered focus keyword was silently lost on every save.
+      focusKeyword: focusKeyword.trim(),
     };
 
     if (onUpdateSiteSettings) {

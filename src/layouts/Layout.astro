@@ -1,6 +1,13 @@
 ---
 import '../index.css';
-import { initialSiteSettings } from '../data/initialData';
+// Read the admin-controlled settings file, NOT initialData.ts.
+// initialData.ts has no write path anywhere in the codebase, so every SEO/meta
+// value read from it was frozen at seed values and ignored all admin edits.
+// siteSettings.json is written on GitHub publish and rebuilt by Cloudflare Pages,
+// so reading it here makes the dashboard the real source of truth for the <head>.
+import siteSettingsJson from '../data/siteSettings.json';
+
+const siteSettings: any = (siteSettingsJson as any) || {};
 
 interface Props {
   title?: string;
@@ -8,23 +15,35 @@ interface Props {
   ogImage?: string;
   canonicalUrl?: string;
   robotsDirective?: string;
+  ogType?: string;
   schemaData?: any;
 }
 
-const siteTitle = initialSiteSettings.siteTitle;
-const siteUrl = initialSiteSettings.siteUrl || 'https://astropress.pages.dev';
-const twitterHandle = initialSiteSettings.seoSocialProfiles?.twitterHandle || '@astropress';
+const siteTitle = siteSettings.siteTitle || 'AstroPress';
+const siteUrl = (siteSettings.siteUrl || '').replace(/\/+$/, '');
+const twitterHandle = siteSettings.seoSocialProfiles?.twitterHandle || '';
 
 const {
-  title = `${siteTitle} — ${initialSiteSettings.siteTagline}`,
-  description = initialSiteSettings.siteDescription,
-  ogImage = initialSiteSettings.defaultOgImage,
-  canonicalUrl = Astro.url ? Astro.url.href : siteUrl,
+  title = `${siteTitle} — ${siteSettings.siteTagline || ''}`.trim(),
+  description = siteSettings.siteDescription,
+  ogImage = siteSettings.defaultOgImage,
+  canonicalUrl = Astro.site && siteUrl
+    ? new URL(Astro.url.pathname, siteUrl).href
+    : (siteUrl && siteUrl ? `${siteUrl}${Astro.url.pathname}` : Astro.url.href),
   robotsDirective = "index, follow",
+  ogType = "website",
   schemaData,
 } = Astro.props;
 
-const defaultProfiles = initialSiteSettings.seoSocialProfiles || {};
+// Open Graph and Twitter both require absolute image URLs. Uploads are stored
+// as root-relative paths (/uploads/x.webp), which social scrapers cannot resolve.
+const absoluteOgImage = ogImage
+  ? (/^https?:\/\//i.test(ogImage)
+      ? ogImage
+      : `${siteUrl.replace(/\/+$/, '')}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`)
+  : ogImage;
+
+const defaultProfiles = siteSettings.seoSocialProfiles || {};
 const sameAsUrls = [
   defaultProfiles.facebookUrl,
   defaultProfiles.instagramUrl,
@@ -34,8 +53,48 @@ const sameAsUrls = [
   defaultProfiles.twitterHandle ? `https://x.com/${defaultProfiles.twitterHandle.replace(/^@/, '')}` : undefined,
 ].filter(Boolean);
 
-const siteLogoUrl = initialSiteSettings.logoUrl;
-const siteFaviconUrl = initialSiteSettings.faviconUrl || '/favicon.ico';
+const siteLogoUrl = siteSettings.logoUrl;
+// Previously fell back to /favicon.ico, which does not exist in public/, so
+// every single page view produced a 404 for the favicon.
+const siteFaviconUrl = siteSettings.faviconUrl || '/favicon.svg';
+
+// Theme colours and body font are applied on the static <body> rather than as an
+// inline style on the hydrated React root. The browser's CSSOM normalises inline
+// style values (hex -> rgb(), and it re-quotes multi-word font names), so React's
+// server serialisation and the client's first render never matched on that
+// element. Because it was the outermost node of the island, that difference made
+// React discard the entire hydrated tree. The same declarations on <body> give
+// identical computed styles through inheritance and React never touches them.
+import themeSettingsJson from '../data/themeSettings.json';
+import heroConfigJson from '../data/heroConfig.json';
+const themeSettings: any = (themeSettingsJson as any) || {};
+const heroConfig: any = (heroConfigJson as any) || {};
+const themeFont =
+  themeSettings.bodyFont === 'Source Serif 4'
+    ? 'Source Serif 4, Georgia, serif'
+    : 'Plus Jakarta Sans, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+
+// Admin-configurable brand colours are exposed as CSS custom properties here and
+// consumed by the React components via var(--ap-*).
+//
+// The browser's CSSOM normalises inline style values (hex -> rgb(), multi-word
+// font names re-quoted), so a literal colour written as an inline style on a
+// server-rendered React element never matched the client's first render. Custom
+// property values are token streams and are preserved verbatim by CSSOM, so
+// var() references are stable across SSR and hydration. The exact colours,
+// typography, spacing, layout and responsive behaviour are unchanged.
+const brandVars = [
+  `--ap-primary:${themeSettings.primaryColor || '#2563eb'}`,
+  `--ap-accent:${heroConfig.svgAccentColor || themeSettings.primaryColor || '#2563eb'}`,
+  `--ap-hero-text:${heroConfig.textColor || '#0f172a'}`,
+  `--ap-hero-desc:${heroConfig.descriptionColor || '#475569'}`,
+  `--ap-hero-eyebrow-bg:${heroConfig.eyebrowBgColor || 'rgba(37, 99, 235, 0.08)'}`,
+  `--ap-hero-eyebrow-text:${heroConfig.eyebrowTextColor || '#2563eb'}`,
+  `--ap-hero-btn-bg:${heroConfig.primaryButtonBgColor || heroConfig.svgAccentColor || '#2563eb'}`,
+  `--ap-hero-btn-text:${heroConfig.primaryButtonTextColor || '#ffffff'}`,
+].join(';');
+
+const bodyStyle = `${brandVars};background-color:${themeSettings.backgroundColor || '#f8fafc'};color:${themeSettings.textColor || '#0f172a'};font-family:${themeFont}`;
 
 const organizationSchema: any = {
   '@type': 'Organization',
@@ -210,21 +269,21 @@ const defaultSchemaGraph = schemaData || {
     <link rel="icon" href={siteFaviconUrl} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={ogImage} />
-    <meta property="og:type" content="website" />
+    <meta property="og:image" content={absoluteOgImage} />
+    <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content={siteTitle} />
     <meta property="og:url" content={canonicalUrl} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image" content={absoluteOgImage} />
     <meta name="twitter:site" content={twitterHandle} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <script type="application/ld+json" id="astropress-schema" set:html={JSON.stringify(defaultSchemaGraph, null, 2)} />
   </head>
-  <body class="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans">
+  <body class="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans" style={bodyStyle}>
     <slot />
   </body>
 </html>

@@ -12,15 +12,44 @@ interface Props {
 
 export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) => {
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  // Previously this set the success state immediately and sent nothing, so every
+  // submission was silently discarded while telling the visitor a coordinator
+  // would reply within 24 hours.
+  //
+  // There is no /api/contact endpoint in this project, and inventing one would
+  // require a new storage destination (a D1 table and migration) which is out of
+  // scope. So the form now posts for real and reports the actual outcome: it
+  // only shows the success panel when the request genuinely succeeds, and
+  // otherwise tells the visitor the message was not delivered.
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSubmitted(true);
-    setTimeout(() => {
-      setFormData({ name: '', email: '', subject: '', message: '' });
-      setFormSubmitted(false);
-    }, 4000);
+    setFormError('');
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) {
+        setFormSubmitted(true);
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        setFormError(
+          'Sorry, your message could not be delivered. Please email us directly using the address on this page.'
+        );
+      }
+    } catch {
+      setFormError(
+        'Sorry, your message could not be delivered. Please email us directly using the address on this page.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -90,8 +119,11 @@ export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) =>
               <form onSubmit={handleContactSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">Your Name</label>
+                    <label htmlFor="contact-name" className="text-xs font-semibold text-slate-700 block mb-1">Your Name</label>
                     <input
+                      id="contact-name"
+                      name="name"
+                      autoComplete="name"
                       type="text"
                       required
                       value={formData.name}
@@ -101,8 +133,11 @@ export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) =>
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">Your Email</label>
+                    <label htmlFor="contact-email" className="text-xs font-semibold text-slate-700 block mb-1">Your Email</label>
                     <input
+                      id="contact-email"
+                      name="email"
+                      autoComplete="email"
                       type="email"
                       required
                       value={formData.email}
@@ -114,8 +149,10 @@ export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) =>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Subject</label>
+                  <label htmlFor="contact-subject" className="text-xs font-semibold text-slate-700 block mb-1">Subject</label>
                   <input
+                    id="contact-subject"
+                    name="subject"
                     type="text"
                     required
                     value={formData.subject}
@@ -126,8 +163,10 @@ export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) =>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Message</label>
+                  <label htmlFor="contact-message" className="text-xs font-semibold text-slate-700 block mb-1">Message</label>
                   <textarea
+                    id="contact-message"
+                    name="message"
                     required
                     rows={4}
                     value={formData.message}
@@ -137,12 +176,22 @@ export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) =>
                   />
                 </div>
 
+                {formError && (
+                  <div
+                    role="alert"
+                    className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold"
+                  >
+                    {formError}
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-2"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  <span>Send Message</span>
+                  <span>{isSubmitting ? 'Sending...' : 'Send Message'}</span>
                 </button>
               </form>
             )}

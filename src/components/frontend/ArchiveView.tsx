@@ -91,7 +91,7 @@ export const ArchiveView: React.FC<Props> = ({
                 </div>
 
                 <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span>{new Date(post.pubDate).toLocaleDateString()}</span>
+                  <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />

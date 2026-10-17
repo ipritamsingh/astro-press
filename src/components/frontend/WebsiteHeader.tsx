@@ -36,7 +36,7 @@ export const WebsiteHeader: React.FC<Props> = ({
             className="flex items-center gap-3 cursor-pointer group select-none shrink-0"
           >
             <div
-              style={{ backgroundColor: themeSettings.primaryColor }}
+              style={{ backgroundColor: 'var(--ap-primary)' }}
               className="h-10 w-10 rounded-xl flex items-center justify-center text-white font-extrabold text-xl shadow-sm group-hover:scale-105 transition-transform"
             >
               A

@@ -67,7 +67,7 @@ try {
 
 import React, { useState, useEffect } from 'react';
 import { useCMS } from './data/cmsStore';
-import { Post, Page, Category, Tag, GutenbergBlock, HeroSectionConfig } from './types/cms';
+import { Post, Page, Category, Tag, GutenbergBlock, HeroSectionConfig, Author, MediaItem, Comment, Menu, HomepageSection, ThemeSettings, SiteSettings, TemplateConfig } from './types/cms';
 import { calculateRobotsDirective } from './utils/seoUtils';
 
 // Frontend Components
@@ -127,8 +127,36 @@ type FrontendRoute =
   | { type: 'page'; page: Page }
   | { type: 'archive'; archiveType: 'category' | 'tag'; item: Category | Tag };
 
-export default function App() {
-  const cms = useCMS();
+/**
+ * Optional build-time props.
+ *
+ * When omitted (admin routes, or any existing caller) behaviour is unchanged.
+ * When supplied by a public route, the component server-renders real content
+ * into the static HTML instead of emitting an empty hydration shell.
+ */
+export interface AppSeed {
+  posts?: Post[];
+  pages?: Page[];
+  categories?: Category[];
+  tags?: Tag[];
+  authors?: Author[];
+  media?: MediaItem[];
+  comments?: Comment[];
+  menus?: Menu[];
+  homepageSections?: HomepageSection[];
+  heroConfig?: HeroSectionConfig;
+  themeSettings?: ThemeSettings;
+  siteSettings?: SiteSettings;
+  templates?: TemplateConfig[];
+}
+
+export interface AppProps {
+  seed?: AppSeed;
+  initialRoute?: FrontendRoute;
+}
+
+export default function App(props: AppProps = {}) {
+  const cms = useCMS(props.seed);
 
   // Authentication & Security State
   const [authState, setAuthState] = useState<AuthPublicState | null>(null);
@@ -349,7 +377,12 @@ export default function App() {
   const [githubSyncStatus, setGithubSyncStatus] = useState<'Connected' | 'Syncing' | 'Error' | 'Disconnected'>('Connected');
 
   // Frontend routing state
-  const [currentRoute, setCurrentRoute] = useState<FrontendRoute>({ type: 'home' });
+  // Seeded from the build-time prop so the server and the first client render
+  // agree. Without this, every public route would server-render the homepage,
+  // because the real route is only resolved later inside a useEffect.
+  const [currentRoute, setCurrentRoute] = useState<FrontendRoute>(
+    () => props.initialRoute || { type: 'home' }
+  );
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Dynamically enforce SEO, Site Identity, OpenGraph, Twitter Cards, Robots & Schema.org JSON-LD in head
@@ -403,16 +436,31 @@ export default function App() {
     setMetaTag('meta[name="twitter:description"]', 'name', 'twitter:description', pageDesc);
     setMetaTag('meta[name="twitter:image"]', 'name', 'twitter:image', pageOgImage);
     setMetaTag('meta[name="twitter:site"]', 'name', 'twitter:site', twitterHandle);
-    setMetaTag('link[rel="canonical"]', 'rel', 'canonical', window.location.href);
+    // Canonical: use the configured production origin + path. Using
+    // window.location.href kept ?query and #fragment, so a shared link such as
+    // /my-post/?utm_source=x self-canonicalised to the parameterised URL and
+    // split ranking signals across duplicates.
+    const canonicalOrigin = siteUrl.replace(/\/+$/, '');
+    const canonicalPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    setMetaTag('link[rel="canonical"]', 'rel', 'canonical', `${canonicalOrigin}${canonicalPath}`);
 
     const siteFavicon = cms.siteSettings?.faviconUrl || cms.themeSettings.faviconUrl;
     if (siteFavicon) {
       setMetaTag('link[rel="icon"]', 'rel', 'icon', siteFavicon);
     }
 
-    // Robots directive
+    // Robots directive.
+    // Respect a noindex already emitted at build time. Previously this
+    // unconditionally overwrote the server-rendered tag, which turned the
+    // `noindex, nofollow` on /wpadmin back into `index, follow` as soon as
+    // this bundle ran.
     const directive = calculateRobotsDirective(currentRoute, cms.siteSettings?.indexingSettings);
-    setMetaTag('meta[name="robots"]', 'name', 'robots', directive);
+    const existingRobots = document.querySelector('meta[name="robots"]');
+    const existingContent = existingRobots?.getAttribute('content') || '';
+    const serverSaidNoindex = /noindex/i.test(existingContent);
+    if (!existingRobots || !serverSaidNoindex) {
+      setMetaTag('meta[name="robots"]', 'name', 'robots', directive);
+    }
 
     // Schema.org Graph Construction
     const profiles = cms.siteSettings?.seoSocialProfiles || {};
@@ -471,22 +519,28 @@ export default function App() {
       });
     } else if (currentRoute.type === 'post' && currentRoute.post) {
       const post = currentRoute.post;
-      const postUrl = `${siteUrl.replace(/\/+$/, '')}/posts/${post.slug}`;
+      // permalinkStructure is /%postname%/, so the canonical post URL is
+      // /{slug}/. This previously used /posts/{slug}, which made every
+      // article @id, mainEntityOfPage and breadcrumb item a 404.
+      const postUrl = `${siteUrl.replace(/\/+$/, '')}/${String(post.slug || '').replace(/^\/+|\/+$/g, '')}`;
       const postDesc = post.excerpt || post.body?.substring(0, 160) || siteDesc;
       const postImg = post.featuredImage || pageOgImage;
+      const postAuthor = post.author || 'Staff Writer';
 
       graphItems.push({
         '@type': 'BlogPosting',
         '@id': `${postUrl}#article`,
+        mainEntityOfPage: { '@type': 'WebPage', '@id': postUrl },
+        url: postUrl,
         headline: post.title,
         description: postDesc,
         image: postImg,
         datePublished: post.pubDate,
-        dateModified: post.pubDate,
-        mainEntityOfPage: postUrl,
+        // Only claim a modification date when the content actually has one.
+        dateModified: post.updatedDate || post.pubDate,
         author: {
           '@type': 'Person',
-          name: post.author || 'Staff Writer',
+          name: postAuthor,
         },
         publisher: {
           '@id': `${siteUrl}#organization`,
@@ -875,14 +929,12 @@ export default function App() {
 
   return (
     <div
-      style={{
-        backgroundColor: cms.themeSettings.backgroundColor,
-        color: cms.themeSettings.textColor,
-        fontFamily:
-          cms.themeSettings.bodyFont === 'Source Serif 4'
-            ? "'Source Serif 4', Georgia, serif"
-            : "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-      }}
+      // Theme colours and body font are applied by Layout.astro on the static <body>.
+      // They are deliberately NOT repeated as an inline style here: CSSOM
+      // normalises inline style values (hex -> rgb(), multi-word font names get
+      // re-quoted), so React's server output and the client's first render could
+      // never agree on this attribute. It is the outermost node of the island, so
+      // any difference discarded the entire hydrated tree.
       className="min-h-screen flex flex-col font-sans"
     >
       {/* ========================================================================= */}

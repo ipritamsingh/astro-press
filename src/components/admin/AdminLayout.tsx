@@ -129,7 +129,7 @@ export const AdminLayout: React.FC<Props> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans select-none text-slate-800">
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-800">
       {/* ========================================================================= */}
       {/* TOP WORDPRESS ADMIN BAR                                                   */}
       {/* ========================================================================= */}
@@ -137,25 +137,30 @@ export const AdminLayout: React.FC<Props> = ({
         <div className="flex items-center gap-3">
           {/* Mobile Menu Toggle */}
           <button
+            type="button"
+            aria-label="Toggle admin navigation menu"
+            aria-expanded={mobileDrawerOpen}
+            aria-controls="admin-mobile-drawer"
             onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
             className="md:hidden p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-800"
           >
-            <MenuIcon className="h-4 w-4" />
+            <MenuIcon className="h-4 w-4" aria-hidden="true" />
           </button>
 
           {/* WordPress / AstroPress W-Logo Mark */}
-          <div
+          <button
+            type="button"
             onClick={onViewLiveSite}
-            className="flex items-center gap-2 cursor-pointer group hover:text-white"
+            className="flex items-center gap-2 cursor-pointer group hover:text-white text-left"
             title="AstroPress — WordPress-Style Sveltia CMS"
           >
-            <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-xs group-hover:bg-blue-500 transition-colors">
+            <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-xs group-hover:bg-blue-500 transition-colors" aria-hidden="true">
               W
             </div>
             <span className="font-bold text-sm tracking-tight hidden sm:inline text-white">
               {themeSettings.siteName}
             </span>
-          </div>
+          </button>
 
           {/* Visit Site Button */}
           <button
@@ -169,10 +174,13 @@ export const AdminLayout: React.FC<Props> = ({
           {/* + New Dropdown */}
           <div className="relative">
             <button
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={showNewDropdown}
               onClick={() => setShowNewDropdown(!showNewDropdown)}
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-medium transition-colors"
             >
-              <Plus className="h-3.5 w-3.5 text-emerald-400" />
+              <Plus className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
               <span>New</span>
             </button>
             {showNewDropdown && (
@@ -287,7 +295,7 @@ export const AdminLayout: React.FC<Props> = ({
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-slate-400">Repository:</span>
                     <code className="text-purple-300 font-mono font-bold bg-slate-800 px-1.5 py-0.5 rounded">
-                      {deploymentSettings?.githubRepo || 'ipritamsingh/astropress'}
+                      {deploymentSettings?.githubRepo || 'ipritamsingh/astro-press'}
                     </code>
                   </div>
 
@@ -461,10 +469,10 @@ export const AdminLayout: React.FC<Props> = ({
         {/* MOBILE DRAWER */}
         {mobileDrawerOpen && (
           <div className="fixed inset-0 z-40 md:hidden bg-slate-950/70 backdrop-blur-xs flex">
-            <div className="w-64 bg-slate-900 text-white h-full p-4 flex flex-col space-y-2">
+            <div id="admin-mobile-drawer" className="w-64 bg-slate-900 text-white h-full p-4 flex flex-col space-y-2">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <span className="font-bold text-sm">AstroPress Admin</span>
-                <button onClick={() => setMobileDrawerOpen(false)} className="text-slate-400">
+                <button type="button" aria-label="Close admin navigation menu" onClick={() => setMobileDrawerOpen(false)} className="text-slate-400">
                   <X className="h-5 w-5" />
                 </button>
               </div>

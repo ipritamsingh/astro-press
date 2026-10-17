@@ -173,7 +173,7 @@ export async function optimizeImageFile(
     const fallbackDataUrl = await fileToDataUrl(file);
     return {
       file,
-      dataUrl,
+      dataUrl: fallbackDataUrl,
       filename: file.name,
       originalFilename: file.name,
       format: 'other',

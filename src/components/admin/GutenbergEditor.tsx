@@ -127,7 +127,7 @@ export const GutenbergEditor: React.FC<Props> = ({
   mediaLibrary,
   existingSlugs = [],
   deploymentSettings = {
-    githubRepo: 'ipritamsingh/astropress',
+    githubRepo: 'ipritamsingh/astro-press',
     githubBranch: 'main',
     productionUrl: '',
     cloudflarePagesProject: '',
@@ -3365,7 +3365,7 @@ ${compileBlocksToMarkdown()}`;
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 font-medium">Target GitHub Repo:</span>
                 <span className="font-mono font-bold text-slate-900">
-                  {deploymentSettings.githubRepo || 'ipritamsingh/astropress'}
+                  {deploymentSettings.githubRepo || 'ipritamsingh/astro-press'}
                 </span>
               </div>
               <div className="flex items-center justify-between">

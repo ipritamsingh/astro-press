@@ -401,7 +401,7 @@ export async function executeAtomicBulkDeploy(payload: FullPushPayload): Promise
 async function performAtomicBulkDeploy(payload: FullPushPayload) {
   const { deploymentSettings, sessionToken, onProgress, customCommitMessage } = payload;
   const branch = deploymentSettings.githubBranch || 'main';
-  const repoString = deploymentSettings.githubRepo || 'ipritamsingh/astropress';
+  const repoString = deploymentSettings.githubRepo || 'ipritamsingh/astro-press';
   const [owner, repoName] = repoString.split('/');
   const token = (sessionToken || deploymentSettings.githubToken || '').trim();
 
@@ -1055,7 +1055,7 @@ export async function executeRealGitHubPublish(
   onProgress?: (progress: { current: number; total: number; filePath: string; status: 'pushing' | 'done' | 'error' }) => void
 ): Promise<PublishResult> {
   const branch = deploymentSettings.githubBranch || 'main';
-  const repoString = deploymentSettings.githubRepo || 'ipritamsingh/astropress';
+  const repoString = deploymentSettings.githubRepo || 'ipritamsingh/astro-press';
   const [owner, repoName] = repoString.split('/');
   const token = (sessionToken || deploymentSettings.githubToken || '').trim();
   const siteUrl = deploymentSettings.productionUrl || '';

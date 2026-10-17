@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Post, Page, Category } from '../../types/cms';
 import { Search, X, ArrowRight, FileText, BookOpen, Hash } from 'lucide-react';
 
@@ -23,17 +23,40 @@ export const SearchModal: React.FC<Props> = ({
 }) => {
   const [query, setQuery] = useState('');
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        // Handled by parent toggle if needed
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      // Keep Tab inside the dialog. Without this, focus escapes to the page
+      // behind the overlay while the modal is still visually on top.
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -60,15 +83,20 @@ export const SearchModal: React.FC<Props> = ({
       className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-start justify-center pt-16 sm:pt-24 px-4 font-sans animate-in fade-in duration-150 cursor-pointer"
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search content"
         onClick={(e) => e.stopPropagation()}
         className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col cursor-default"
       >
         {/* Search Input Bar */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-200">
-          <Search className="h-5 w-5 text-slate-400 shrink-0" />
+          <Search className="h-5 w-5 text-slate-400 shrink-0" aria-hidden="true" />
           <input
+            ref={searchInputRef}
             type="text"
-            autoFocus
+            aria-label="Search stories, pages, topics, or keywords"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search stories, pages, topics, or keywords..."

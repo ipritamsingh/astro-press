@@ -11,7 +11,10 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        // Must match astro.config.mjs and tsconfig.json. This previously pointed
+        // at the repo root, so `@/components/X` and `@/src/components/X` resolved
+        // to opposite results depending on which config was active.
+        '@': path.resolve(__dirname, './src'),
       },
     },
     server: {

@@ -872,7 +872,7 @@ export const initialHeroConfig: HeroSectionConfig = {
 };
 
 export const initialDeploymentSettings: DeploymentSettings = {
-  githubRepo: 'ipritamsingh/astropress',
+  githubRepo: 'ipritamsingh/astro-press',
   githubBranch: 'main',
   githubToken: '',
   cloudflareWorkerUrl: '',

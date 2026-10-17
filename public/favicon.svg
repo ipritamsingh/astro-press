@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Site icon">
+  <rect width="64" height="64" rx="14" fill="#2563eb"/>
+  <path d="M32 13c-9.9 0-18 6.6-18 14.8 0 4.8 2.9 9 7.4 11.7L18 52l11.6-7.2c.8.1 1.6.1 2.4.1 9.9 0 18-6.6 18-14.8S41.9 13 32 13z" fill="#fff"/>
+  <circle cx="25" cy="29" r="3" fill="#2563eb"/>
+  <circle cx="39" cy="29" r="3" fill="#2563eb"/>
+</svg>

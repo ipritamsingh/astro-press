@@ -8,6 +8,7 @@ import {
   Menu,
   HeroSectionConfig,
   ThemeSettings,
+  SiteSettings,
   DeploymentSettings,
 } from '../types/cms';
 import { CMSDataState } from './cmsStore';
@@ -155,7 +156,7 @@ export async function fetchRemoteCMSDataFromGitHub(
   error?: string;
 }> {
   const branch = settings.githubBranch || 'main';
-  const repoString = settings.githubRepo || 'ipritamsingh/astropress';
+  const repoString = settings.githubRepo || 'ipritamsingh/astro-press';
   const [owner, repoName] = repoString.split('/');
   const token = (sessionToken || settings.githubToken || '').trim();
 
@@ -208,8 +209,9 @@ export async function fetchRemoteCMSDataFromGitHub(
     let fetchedAuthors: Author[] | undefined = undefined;
     let fetchedMedia: MediaItem[] | undefined = undefined;
     let fetchedMenus: Menu[] | undefined = undefined;
-    let fetchedHeroConfig: HeroSectionConfig | undefined = undefined;
-    let fetchedThemeSettings: ThemeSettings | undefined = undefined;
+let fetchedHeroConfig: HeroSectionConfig | undefined = undefined;
+let fetchedThemeSettings: ThemeSettings | undefined = undefined;
+let fetchedSiteSettings: SiteSettings | undefined = undefined;
 
     // Helper to fetch blob content
     const fetchBlobText = async (itemPath: string, blobSha: string): Promise<string> => {
@@ -309,6 +311,19 @@ export async function fetchRemoteCMSDataFromGitHub(
             if (Array.isArray(parsed)) fetchedMedia = parsed;
           } catch (e) {}
         }
+      } else if (item.path === 'src/data/siteSettings.json') {
+        // Site settings were published to GitHub but never pulled back, so admin
+        // changes could never round-trip into a different browser/dashboard.
+        const text = await fetchBlobText(item.path, item.sha);
+        if (text) {
+          rawFiles.push({ path: item.path, content: text });
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              fetchedSiteSettings = parsed as SiteSettings;
+            }
+          } catch (e) {}
+        }
       }
     }
 
@@ -327,6 +342,7 @@ export async function fetchRemoteCMSDataFromGitHub(
         menus: fetchedMenus,
         heroConfig: fetchedHeroConfig,
         themeSettings: fetchedThemeSettings,
+        siteSettings: fetchedSiteSettings,
       },
     };
   } catch (err: any) {
@@ -545,6 +561,48 @@ export function mergeCMSStates(localState: CMSDataState, remoteState: Partial<CM
       }
     : localState.themeSettings;
 
+  // 9. Merge SiteSettings.
+  // Remote fills in anything this browser has never seen; local wins for every key
+  // it does know about, so unsaved dashboard edits are never clobbered.
+  // indexingSettings is merged key-by-key so an indexing toggle made on another
+  // device still takes effect.
+  const mergedSiteSettings: SiteSettings = remoteState.siteSettings
+    ? {
+        ...remoteState.siteSettings,
+        ...localState.siteSettings,
+        indexingSettings: {
+          globalIndexing:
+            localState.siteSettings.indexingSettings?.globalIndexing ??
+            remoteState.siteSettings.indexingSettings?.globalIndexing ??
+            true,
+          postsIndexing:
+            localState.siteSettings.indexingSettings?.postsIndexing ??
+            remoteState.siteSettings.indexingSettings?.postsIndexing ??
+            true,
+          pagesIndexing:
+            localState.siteSettings.indexingSettings?.pagesIndexing ??
+            remoteState.siteSettings.indexingSettings?.pagesIndexing ??
+            true,
+          categoriesIndexing:
+            localState.siteSettings.indexingSettings?.categoriesIndexing ??
+            remoteState.siteSettings.indexingSettings?.categoriesIndexing ??
+            false,
+          tagsIndexing:
+            localState.siteSettings.indexingSettings?.tagsIndexing ??
+            remoteState.siteSettings.indexingSettings?.tagsIndexing ??
+            false,
+          paginationPagesIndexing:
+            localState.siteSettings.indexingSettings?.paginationPagesIndexing ??
+            remoteState.siteSettings.indexingSettings?.paginationPagesIndexing ??
+            false,
+          searchResultsIndexing:
+            localState.siteSettings.indexingSettings?.searchResultsIndexing ??
+            remoteState.siteSettings.indexingSettings?.searchResultsIndexing ??
+            false,
+        },
+      }
+    : localState.siteSettings;
+
   return {
     ...localState,
     posts: mergedPosts,
@@ -556,5 +614,6 @@ export function mergeCMSStates(localState: CMSDataState, remoteState: Partial<CM
     menus: mergedMenus,
     heroConfig: mergedHeroConfig,
     themeSettings: mergedThemeSettings,
+    siteSettings: mergedSiteSettings,
   };
 }

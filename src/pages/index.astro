@@ -2,6 +2,15 @@
 import Layout from '../layouts/Layout.astro';
 import App from '../App';
 import { getCollection } from 'astro:content';
+import siteSettingsJson from '../data/siteSettings.json';
+import categoriesJson from '../data/categories.json';
+import menusJson from '../data/menus.json';
+import themeSettingsJson from '../data/themeSettings.json';
+import heroConfigJson from '../data/heroConfig.json';
+
+const siteSettings: any = (siteSettingsJson as any) || {};
+const siteTitle: string = siteSettings.siteTitle || 'AstroPress';
+const siteTagline: string = siteSettings.siteTagline || '';
 
 const collectionPosts = await getCollection('posts');
 const serverPosts = collectionPosts.map((post) => ({
@@ -21,11 +30,28 @@ const serverPosts = collectionPosts.map((post) => ({
   body: post.body || '',
   seo: post.data.seo || {},
 }));
+
+const publishedPosts = serverPosts.filter((p) => p.status !== 'draft');
+const seedCategories: any = (categoriesJson as any)?.categories || (categoriesJson as any) || [];
+const seedMenus: any = (menusJson as any)?.menus || (menusJson as any) || [];
+const seedTheme: any = (themeSettingsJson as any) || {};
+const seedHero: any = (heroConfigJson as any) || {};
 ---
 
-<Layout title="AstroPress — WordPress-Style Sveltia CMS Platform">
+<Layout title={`${siteTitle} — ${siteTagline}`} description={siteSettings.siteDescription}>
   <script is:inline define:vars={{ serverPosts }}>
     window.__ASTROPRESS_SERVER_POSTS__ = serverPosts;
   </script>
-  <App client:only="react" />
+  <App
+    client:load
+    seed={{
+      posts: publishedPosts,
+      categories: seedCategories,
+      menus: seedMenus,
+      themeSettings: seedTheme,
+      heroConfig: seedHero,
+      siteSettings: siteSettings,
+    }}
+    initialRoute={{ type: 'home' }}
+  />
 </Layout>
