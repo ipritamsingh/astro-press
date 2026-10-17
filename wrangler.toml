@@ -14,5 +14,5 @@ pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "pritampress-db"
-database_id = "b05bf8e9-f81d-44b1-92b7-15c9902cb12c"
+database_name = "astropress-db"
+database_id = "b5cd3acd-95fb-4bfe-b993-5f193a59976a"
