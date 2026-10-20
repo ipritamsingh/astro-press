@@ -818,6 +818,22 @@ export function useCMS(seed?: Partial<CMSDataState>) {
     saveStoredData(updated);
     setData(updated);
     recordCommit(`feat(users): ${existingIndex >= 0 ? 'update' : 'add'} user "${author.name}" (${author.role})`, updated);
+
+    // Sync to disk if running in development / container
+    if (typeof window !== 'undefined') {
+      fetch('/api/content/sync-disk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: [
+            {
+              path: 'src/data/authors.json',
+              content: JSON.stringify(updatedAuthors, null, 2),
+            },
+          ],
+        }),
+      }).catch(() => {});
+    }
   };
 
   const updateAuthorRole = (id: string, role: string) => {
@@ -827,6 +843,21 @@ export function useCMS(seed?: Partial<CMSDataState>) {
     saveStoredData(updated);
     setData(updated);
     recordCommit(`feat(access): update role of "${target?.name || id}" to ${role}`, updated);
+
+    if (typeof window !== 'undefined') {
+      fetch('/api/content/sync-disk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: [
+            {
+              path: 'src/data/authors.json',
+              content: JSON.stringify(updatedAuthors, null, 2),
+            },
+          ],
+        }),
+      }).catch(() => {});
+    }
   };
 
   const deleteAuthor = (id: string) => {
@@ -836,6 +867,21 @@ export function useCMS(seed?: Partial<CMSDataState>) {
     saveStoredData(updated);
     setData(updated);
     recordCommit(`feat(users): remove user "${target?.name || id}"`, updated);
+
+    if (typeof window !== 'undefined') {
+      fetch('/api/content/sync-disk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: [
+            {
+              path: 'src/data/authors.json',
+              content: JSON.stringify(updatedAuthors, null, 2),
+            },
+          ],
+        }),
+      }).catch(() => {});
+    }
   };
 
   // THEME SETTINGS

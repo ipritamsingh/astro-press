@@ -57,6 +57,7 @@ export type AdminView =
   | 'seo'
   | 'account-security'
   | 'users'
+  | 'authors'
   | 'settings'
   | 'backup-restore'
   | 'github-deployment'
@@ -120,6 +121,7 @@ export const AdminLayout: React.FC<Props> = ({
     { id: 'customizer', label: 'Theme Customizer', icon: <Palette className="h-4 w-4" /> },
     { id: 'seo', label: 'SEO Management', icon: <Search className="h-4 w-4" /> },
     { id: 'account-security', label: 'Account Security', icon: <Shield className="h-4 w-4 text-emerald-400" /> },
+    { id: 'authors', label: 'Authors & Profiles', icon: <User className="h-4 w-4 text-amber-500" /> },
     { id: 'users', label: 'Users & Access', icon: <Users className="h-4 w-4" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
     { id: 'backup-restore', label: 'Backup & Restore', icon: <Database className="h-4 w-4 text-teal-400" /> },

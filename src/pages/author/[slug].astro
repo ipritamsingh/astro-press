@@ -1,0 +1,118 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { WebsiteHeaderWrapper } from '../../components/frontend/WebsiteHeaderWrapper';
+import { WebsiteFooterWrapper } from '../../components/frontend/WebsiteFooterWrapper';
+import { SocialCommunityCta } from '../../components/frontend/SocialCommunityCta';
+import { AuthorProfileViewWrapper } from '../../components/frontend/AuthorProfileViewWrapper';
+import { getCollection } from 'astro:content';
+import { initialThemeSettings, initialAuthors, initialCategories, initialMenus } from '../../data/initialData';
+import themeSettingsJson from '../../data/themeSettings.json';
+import siteSettingsJson from '../../data/siteSettings.json';
+import authorsJson from '../../data/authors.json';
+import categoriesJson from '../../data/categories.json';
+import menusJson from '../../data/menus.json';
+
+export async function getStaticPaths() {
+  const authorsList = (Array.isArray(authorsJson) && authorsJson.length > 0)
+    ? authorsJson
+    : initialAuthors;
+
+  return authorsList.map((author: any) => ({
+    params: { slug: author.slug || author.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
+    props: { author },
+  }));
+}
+
+const { author } = Astro.props as any;
+
+const rawCollectionPosts = await getCollection('posts');
+const rawCollectionPages = await getCollection('pages');
+
+const allPublishedPosts = rawCollectionPosts
+  .filter((p) => !p.data.draft && p.data.status !== 'draft' && p.data.status !== 'trash')
+  .map((p) => ({
+    id: p.id,
+    title: p.data.title,
+    slug: p.data.slug || p.id.replace(/\.md$/, ''),
+    pubDate: p.data.pubDate ? new Date(p.data.pubDate).toISOString() : new Date().toISOString(),
+    status: 'published' as const,
+    author: p.data.author,
+    category: p.data.category,
+    tags: p.data.tags || [],
+    featuredImage: p.data.featuredImage || '',
+    excerpt: p.data.excerpt || '',
+    readingTime: p.data.readingTime || 5,
+    template: p.data.template || 'standard',
+    blocks: p.data.blocks || [],
+    body: p.body || '',
+    seo: p.data.seo || {},
+  }))
+  .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+
+const allPages = rawCollectionPages.map((p) => ({
+  id: p.id,
+  title: p.data.title,
+  slug: p.data.slug || p.id.replace(/\.md$/, ''),
+  status: p.data.draft ? 'draft' : 'published',
+  template: p.data.template || 'default',
+  blocks: p.data.blocks || [],
+  body: p.body || '',
+}));
+
+const themeSettings = themeSettingsJson || initialThemeSettings;
+const siteSettings: any = (siteSettingsJson as any) || {};
+const siteTitle = siteSettings.siteTitle || 'AstroPress';
+const siteUrl = (siteSettings.siteUrl || 'https://astro-press.pages.dev').replace(/\/+$/, '');
+const categories = categoriesJson?.categories || initialCategories;
+const menus = menusJson || initialMenus;
+
+const authorSlug = author.slug || author.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const canonicalUrl = `${siteUrl}/author/${authorSlug}/`;
+const pageTitle = author.seoTitle || `${author.name} — Author Profile — ${siteTitle}`;
+const pageDesc = author.seoDescription || author.bio || `Read articles, analysis, and insights authored by ${author.name} on ${siteTitle}.`;
+---
+
+<Layout
+  title={pageTitle}
+  description={pageDesc}
+  canonicalUrl={canonicalUrl}
+  ogImage={author.avatar}
+  ogType="profile"
+>
+  <div class="min-h-screen flex flex-col font-sans">
+    <WebsiteHeaderWrapper
+      client:load
+      posts={allPublishedPosts as any}
+      pages={allPages as any}
+      categories={categories as any}
+      themeSettings={themeSettings as any}
+      menus={menus as any}
+      permalinkStructure={siteSettings?.permalinkStructure}
+    />
+
+    <main class="flex-1 w-full">
+      <AuthorProfileViewWrapper
+        client:load
+        author={author}
+        posts={allPublishedPosts as any}
+        permalinkStructure={siteSettings?.permalinkStructure}
+        siteUrl={siteUrl}
+      />
+    </main>
+
+    <SocialCommunityCta
+      enabled={siteSettings?.communityCtaEnabled !== false}
+      title={siteSettings?.communityCtaTitle}
+      subtitle={siteSettings?.communityCtaSubtitle}
+      communityLinks={siteSettings?.communityLinks}
+    />
+
+    <WebsiteFooterWrapper
+      client:load
+      themeSettings={themeSettings as any}
+      siteSettings={siteSettings as any}
+      menus={menus as any}
+      categories={categories as any}
+    />
+  </div>
+</Layout>

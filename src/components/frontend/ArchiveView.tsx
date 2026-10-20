@@ -1,5 +1,5 @@
 import React from 'react';
-import { Post, Category, Tag } from '../../types/cms';
+import { Post, Category, Tag, Author } from '../../types/cms';
 import { PostCardImage } from '../common/PostCardImage';
 import { ArrowLeft, Clock, ArrowRight, FolderTree, Tag as TagIcon } from 'lucide-react';
 
@@ -9,6 +9,7 @@ interface Props {
   posts: Post[];
   onBack: () => void;
   onSelectPost: (post: Post) => void;
+  onSelectAuthor?: (author: Author) => void;
 }
 
 export const ArchiveView: React.FC<Props> = ({
@@ -17,6 +18,7 @@ export const ArchiveView: React.FC<Props> = ({
   posts,
   onBack,
   onSelectPost,
+  onSelectAuthor,
 }) => {
   const isCategory = type === 'category';
   const categoryItem = item as Category;
@@ -109,7 +111,31 @@ export const ArchiveView: React.FC<Props> = ({
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span>By {post.author}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">By</span>
+                  <a
+                    href={`/author/${(post.author || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onSelectAuthor && post.author) {
+                        e.preventDefault();
+                        onSelectAuthor({
+                          id: `auth-${post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                          name: post.author,
+                          slug: post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                          role: 'Author',
+                          email: `${post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-')}@astropress.local`,
+                          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+                          bio: '',
+                        });
+                      }
+                    }}
+                    className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs"
+                    aria-label={`View articles by ${post.author}`}
+                  >
+                    {post.author}
+                  </a>
+                </div>
                 <span className="text-blue-600 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
                   Read <ArrowRight className="h-3.5 w-3.5" />
                 </span>

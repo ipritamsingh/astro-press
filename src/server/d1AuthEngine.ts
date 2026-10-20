@@ -8,6 +8,8 @@
 export interface Env {
   DB: D1Database;
   RESEND_API_KEY?: string;
+  RESEND_FROM_EMAIL?: string;
+  SITE_URL?: string;
   SESSION_SECRET?: string;
 }
 
@@ -719,18 +721,20 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         .bind('tok-' + Date.now(), user.id, tokenHash, expiresIso, nowIso)
         .run();
 
-      const resetUrl = `${url.origin}/wpadmin/?action=reset-password&token=${rawToken}`;
+      const configuredOrigin = env.SITE_URL || 'https://astro-press.pages.dev';
+      const resetUrl = `${configuredOrigin}/wpadmin/?action=reset-password&token=${rawToken}`;
 
       if (env.RESEND_API_KEY) {
         try {
-          await fetch('https://api.resend.com/emails', {
+          const fromSender = env.RESEND_FROM_EMAIL || 'AstroPress <onboarding@resend.dev>';
+          const mailRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${env.RESEND_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              from: 'AstroPress Security <security@astropress.dev>',
+              from: fromSender,
               to: email,
               subject: 'AstroPress Password Reset Request',
               html: `
@@ -741,13 +745,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
               `,
             }),
           });
-        } catch {}
+          if (!mailRes.ok) {
+            const errorText = await mailRes.text().catch(() => '');
+            console.error('[D1 Auth Engine] Resend delivery failed with status:', mailRes.status, errorText);
+          }
+        } catch (mailErr) {
+          console.error('[D1 Auth Engine] Failed to dispatch password reset email due to network error.');
+        }
       }
 
       return jsonResponse({
         success: true,
         message: genericMsg,
-        devResetUrl: resetUrl,
       });
     }
 

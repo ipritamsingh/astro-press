@@ -10,7 +10,6 @@ export const ForgotPasswordView: React.FC<Props> = ({ onBackToLogin }) => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [devResetUrl, setDevResetUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,9 +20,6 @@ export const ForgotPasswordView: React.FC<Props> = ({ onBackToLogin }) => {
     try {
       const result = await requestPasswordReset(email);
       setMessage(result.message);
-      if (result.devResetUrl) {
-        setDevResetUrl(result.devResetUrl);
-      }
     } catch (err: any) {
       setError(err.message || 'Failed to process password reset request.');
     } finally {
@@ -61,19 +57,6 @@ export const ForgotPasswordView: React.FC<Props> = ({ onBackToLogin }) => {
               </div>
               <p className="leading-relaxed text-[11px] text-emerald-200/90">{message}</p>
             </div>
-
-            {/* Development & Sandbox Direct Link Inspector */}
-            {devResetUrl && (
-              <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-[11px] space-y-2">
-                <span className="text-slate-400 font-semibold block">Development Reset Link (15 min expiry):</span>
-                <a
-                  href={devResetUrl}
-                  className="block font-mono text-blue-400 text-[10px] break-all hover:underline bg-slate-900 p-2 rounded-lg border border-slate-800"
-                >
-                  {devResetUrl}
-                </a>
-              </div>
-            )}
 
             <button
               type="button"

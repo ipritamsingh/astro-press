@@ -1,20 +1,18 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import siteSettingsJson from '../data/siteSettings.json';
+import authorsJson from '../data/authors.json';
+import { initialAuthors } from '../data/initialData';
 
 /**
  * Build-time XML sitemap generated from the Astro content collections and the
  * admin-controlled settings file.
  *
- * Previously no sitemap was generated or served at all. The admin SEO screen
- * only rendered a copy-paste preview string, and that generator advertised the
- * duplicate /posts/{slug}/ URLs, ignored drafts, and omitted categories.
- *
  * Only canonical, public, indexable URLs are emitted:
  *  - homepage
  *  - published posts at their canonical root-level /{slug}/ permalink
  *  - published pages at /{slug}/ (excluding the "home" duplicate of "/")
- *  - categories, unless categoriesIndexing is disabled
+ *  - authors at /author/{slug}/
  *
  * Private routes (/admin, /admin-native, /wpadmin, /dashboard, /api) and the
  * /posts/{slug}/ duplicates are deliberately excluded.
@@ -55,6 +53,19 @@ export const GET: APIRoute = async () => {
           priority: '0.6',
         });
       }
+    }
+
+    // Authors
+    const authorsList = (Array.isArray(authorsJson) && authorsJson.length > 0)
+      ? authorsJson
+      : initialAuthors;
+    for (const author of authorsList) {
+      if (!author.slug) continue;
+      urls.push({
+        loc: `${base}/author/${author.slug}/`,
+        changefreq: 'monthly',
+        priority: '0.7',
+      });
     }
   }
 

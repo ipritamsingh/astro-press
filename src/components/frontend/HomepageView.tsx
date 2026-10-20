@@ -1,5 +1,5 @@
 import React from 'react';
-import { Post, Category, HomepageSection, ThemeSettings, HeroSectionConfig } from '../../types/cms';
+import { Post, Category, HomepageSection, ThemeSettings, HeroSectionConfig, Author } from '../../types/cms';
 import { HeroSection } from './HeroSection';
 import { PostCardImage } from '../common/PostCardImage';
 import {
@@ -22,9 +22,11 @@ interface Props {
   themeSettings: ThemeSettings;
   currentPage?: number;
   postsPerPage?: number;
+  authors?: Author[];
   onSelectPost: (post: Post) => void;
   onSelectCategory: (cat: Category) => void;
   onNavigate?: (path: string) => void;
+  onSelectAuthor?: (author: Author) => void;
 }
 
 export const HomepageView: React.FC<Props> = ({
@@ -35,13 +37,48 @@ export const HomepageView: React.FC<Props> = ({
   themeSettings,
   currentPage = 1,
   postsPerPage = 6,
+  authors = [],
   onSelectPost,
   onSelectCategory,
   onNavigate,
+  onSelectAuthor,
 }) => {
   const publishedPosts = posts.filter((p) => p.status === 'published');
   const heroPost = publishedPosts[0];
   const featuredPosts = publishedPosts.slice(1, 4);
+
+  const resolveAuthor = (authorName?: string): { name: string; slug: string; avatar: string } => {
+    const raw = (authorName || 'Staff Author').trim();
+    const found = authors.find(
+      (a) => a.name.toLowerCase() === raw.toLowerCase() || a.slug.toLowerCase() === raw.toLowerCase()
+    );
+    return {
+      name: found?.name || raw,
+      slug: found?.slug || raw.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      avatar: found?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80',
+    };
+  };
+
+  const handleAuthorClick = (e: React.MouseEvent, authorName?: string) => {
+    e.stopPropagation();
+    const res = resolveAuthor(authorName);
+    const authorObj: Author = authors.find((a) => a.slug === res.slug) || {
+      id: `auth-${res.slug}`,
+      name: res.name,
+      slug: res.slug,
+      role: 'Author',
+      email: `${res.slug}@astropress.local`,
+      avatar: res.avatar,
+      bio: '',
+    };
+    if (onSelectAuthor) {
+      e.preventDefault();
+      onSelectAuthor(authorObj);
+    } else if (onNavigate) {
+      e.preventDefault();
+      onNavigate(`/author/${res.slug}/`);
+    }
+  };
 
   const currentPageNum = currentPage && currentPage > 0 ? currentPage : 1;
   const totalPosts = publishedPosts.length;
@@ -95,8 +132,15 @@ export const HomepageView: React.FC<Props> = ({
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
-<span>{post.author}</span>
-        <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
+                    <a
+                      href={`/author/${resolveAuthor(post.author).slug}/`}
+                      onClick={(e) => handleAuthorClick(e, post.author)}
+                      className="hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs font-medium text-slate-700"
+                      aria-label={`View articles by ${post.author}`}
+                    >
+                      {post.author}
+                    </a>
+                    <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
                   </div>
                 </div>
               </article>
@@ -232,13 +276,27 @@ export const HomepageView: React.FC<Props> = ({
 
                     <div className="pt-2 flex flex-wrap items-center justify-between gap-4 border-t border-white/10">
                       <div className="flex items-center gap-3">
-                        <img
-                          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"
-                          alt={heroPost.author}
-                          className="h-10 w-10 rounded-full object-cover ring-2 ring-white/20"
-                        />
+                        <a
+                          href={`/author/${resolveAuthor(heroPost.author).slug}/`}
+                          onClick={(e) => handleAuthorClick(e, heroPost.author)}
+                          className="shrink-0 group focus:outline-hidden focus:ring-2 focus:ring-blue-400 rounded-full"
+                          aria-label={`View profile of ${heroPost.author}`}
+                        >
+                          <img
+                            src={resolveAuthor(heroPost.author).avatar}
+                            alt={heroPost.author}
+                            className="h-10 w-10 rounded-full object-cover ring-2 ring-white/20 group-hover:ring-blue-400 transition-all"
+                          />
+                        </a>
                         <div>
-                          <span className="block text-sm font-bold text-white">{heroPost.author}</span>
+                          <a
+                            href={`/author/${resolveAuthor(heroPost.author).slug}/`}
+                            onClick={(e) => handleAuthorClick(e, heroPost.author)}
+                            className="block text-sm font-bold text-white hover:text-blue-300 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-400 rounded-xs"
+                            aria-label={`View articles by ${heroPost.author}`}
+                          >
+                            {heroPost.author}
+                          </a>
                           <span className="text-xs text-slate-400">
                             {new Date(heroPost.pubDate).toLocaleDateString('en-US', {
                               month: 'short',
@@ -356,7 +414,14 @@ export const HomepageView: React.FC<Props> = ({
                         </div>
 
                         <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                          <span className="font-semibold text-slate-800">{post.author}</span>
+                          <a
+                            href={`/author/${resolveAuthor(post.author).slug}/`}
+                            onClick={(e) => handleAuthorClick(e, post.author)}
+                            className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs"
+                            aria-label={`View articles by ${post.author}`}
+                          >
+                            {post.author}
+                          </a>
                           <span className="text-blue-600 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
                             Read <ArrowRight className="h-3.5 w-3.5" />
                           </span>
@@ -417,7 +482,14 @@ export const HomepageView: React.FC<Props> = ({
                         </div>
 
                         <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
-                          <span>{post.author}</span>
+                          <a
+                            href={`/author/${resolveAuthor(post.author).slug}/`}
+                            onClick={(e) => handleAuthorClick(e, post.author)}
+                            className="hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs font-medium text-slate-700"
+                            aria-label={`View articles by ${post.author}`}
+                          >
+                            {post.author}
+                          </a>
                           <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
                         </div>
                       </div>

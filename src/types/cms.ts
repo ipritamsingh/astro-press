@@ -133,6 +133,16 @@ export interface Author {
   bio: string;
   twitter?: string;
   github?: string;
+  designation?: string;
+  website?: string;
+  facebook?: string;
+  instagram?: string;
+  linkedin?: string;
+  youtube?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface MediaItem {

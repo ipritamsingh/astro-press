@@ -241,7 +241,6 @@ export async function logout(): Promise<void> {
 export async function requestPasswordReset(emailInput: string): Promise<{
   success: boolean;
   message: string;
-  devResetUrl?: string;
 }> {
   try {
     const res = await fetch(`${API_BASE}/forgot-password`, {
@@ -257,7 +256,6 @@ export async function requestPasswordReset(emailInput: string): Promise<{
       message:
         result.message ||
         'If this recovery email is registered with an administrator account, password reset instructions have been sent.',
-      devResetUrl: result.devResetUrl,
     };
   } catch (err: any) {
     return {

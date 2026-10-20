@@ -1,12 +1,13 @@
 import { IndexingSettings, Post, Page, Category, Tag } from '../types/cms';
 
 export interface RouteInfo {
-  type: 'home' | 'post' | 'page' | 'archive' | 'search';
+  type: 'home' | 'post' | 'page' | 'archive' | 'search' | 'author';
   pageNum?: number;
   post?: Post;
   page?: Page;
   archiveType?: 'category' | 'tag';
   item?: Category | Tag;
+  author?: any;
 }
 
 export function calculateRobotsDirective(

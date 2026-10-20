@@ -77,6 +77,7 @@ import { HomepageView } from './components/frontend/HomepageView';
 import { SinglePostView } from './components/frontend/SinglePostView';
 import { SinglePageView } from './components/frontend/SinglePageView';
 import { ArchiveView } from './components/frontend/ArchiveView';
+import { AuthorProfileView } from './components/frontend/AuthorProfileView';
 import { SocialCommunityCta } from './components/frontend/SocialCommunityCta';
 import { SearchModal } from './components/frontend/SearchModal';
 
@@ -125,7 +126,8 @@ type FrontendRoute =
   | { type: 'home'; pageNum?: number }
   | { type: 'post'; post: Post }
   | { type: 'page'; page: Page }
-  | { type: 'archive'; archiveType: 'category' | 'tag'; item: Category | Tag };
+  | { type: 'archive'; archiveType: 'category' | 'tag'; item: Category | Tag }
+  | { type: 'author'; author: Author };
 
 /**
  * Optional build-time props.
@@ -289,6 +291,20 @@ export default function App(props: AppProps = {}) {
         }
       }
 
+      if (path.startsWith('/author/')) {
+        const authorSlug = path.replace('/author/', '').replace(/\/$/, '');
+        const author = cms.authors.find(
+          (a) =>
+            (a.slug || '').toLowerCase() === authorSlug.toLowerCase() ||
+            a.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === authorSlug.toLowerCase()
+        );
+        if (author) {
+          setCurrentRoute({ type: 'author', author });
+          setMode('frontend');
+          return;
+        }
+      }
+
       // Check day/month/year permalink: e.g. /2026/09/30/my-post/
       const dayNameMatch = path.match(/^\/\d{4}\/\d{2}\/\d{2}\/([^/]+)\/?$/);
       if (dayNameMatch) {
@@ -408,6 +424,12 @@ export default function App(props: AppProps = {}) {
       pageTitle = `${currentRoute.page.title} — ${siteTitle}`;
     } else if (currentRoute.type === 'archive' && currentRoute.item) {
       pageTitle = `${currentRoute.item.name} — ${siteTitle}`;
+    } else if (currentRoute.type === 'author' && currentRoute.author) {
+      pageTitle = `${currentRoute.author.seoTitle || currentRoute.author.name} — Author Profile — ${siteTitle}`;
+      if (currentRoute.author.seoDescription || currentRoute.author.bio) {
+        pageDesc = currentRoute.author.seoDescription || currentRoute.author.bio;
+      }
+      if (currentRoute.author.avatar) pageOgImage = currentRoute.author.avatar;
     }
 
     document.title = pageTitle;
@@ -716,6 +738,16 @@ export default function App(props: AppProps = {}) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleSelectAuthor = (author: Author) => {
+    setCurrentRoute({ type: 'author', author });
+    setMode('frontend');
+    if (typeof window !== 'undefined') {
+      const authorSlug = author.slug || author.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      window.history.pushState({}, '', `/author/${authorSlug}/`);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Handle Frontend Navigation paths
   const handleNavigate = (path: string) => {
     // Admin route navigation
@@ -774,6 +806,33 @@ export default function App(props: AppProps = {}) {
       if (techCat) {
         handleSelectCategory(techCat);
       }
+      return;
+    }
+
+    // Check author profile e.g. /author/:slug
+    if (path.startsWith('/author/')) {
+      const slug = path.replace('/author/', '').replace(/\/$/, '');
+      let foundAuthor = cms.authors.find(
+        (a) =>
+          (a.slug || '').toLowerCase() === slug.toLowerCase() ||
+          a.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug.toLowerCase()
+      );
+      if (!foundAuthor) {
+        const matchingPost = cms.posts.find(
+          (p) => (p.author || '').toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug.toLowerCase()
+        );
+        foundAuthor = {
+          id: `auth-${slug}`,
+          name: matchingPost?.author || slug.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
+          slug,
+          role: 'Author',
+          designation: 'Staff Author',
+          email: `${slug}@astropress.local`,
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+          bio: `Author and contributor to ${cms.siteSettings?.siteTitle || 'AstroPress'}.`,
+        };
+      }
+      handleSelectAuthor(foundAuthor);
       return;
     }
 
@@ -962,6 +1021,8 @@ export default function App(props: AppProps = {}) {
                 onNavigate={handleNavigate}
                 onSelectPost={handleSelectPost}
                 onSelectCategory={handleSelectCategory}
+                onSelectAuthor={handleSelectAuthor}
+                authors={cms.authors}
               />
             )}
 
@@ -984,6 +1045,8 @@ export default function App(props: AppProps = {}) {
                 onAddComment={(newComment) => {
                   cms.addComment(newComment);
                 }}
+                onSelectAuthor={handleSelectAuthor}
+                siteUrl={cms.siteSettings?.siteUrl}
               />
             )}
 
@@ -1013,6 +1076,21 @@ export default function App(props: AppProps = {}) {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 onSelectPost={handleSelectPost}
+                onSelectAuthor={handleSelectAuthor}
+              />
+            )}
+
+            {currentRoute.type === 'author' && currentRoute.author && (
+              <AuthorProfileView
+                author={currentRoute.author}
+                posts={cms.posts}
+                onBack={() => {
+                  setCurrentRoute({ type: 'home' });
+                  if (typeof window !== 'undefined') window.history.pushState({}, '', '/');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onSelectPost={handleSelectPost}
+                siteUrl={cms.siteSettings?.siteUrl}
               />
             )}
           </main>
@@ -1415,14 +1493,18 @@ export default function App(props: AppProps = {}) {
             <AccountSecurityManager onAuthStateChange={refreshAuth} />
           )}
 
-          {adminView === 'users' && (
+          {(adminView === 'users' || adminView === 'authors') && (
             <UsersManager
               authors={cms.authors}
+              posts={cms.posts}
+              mediaLibrary={cms.media}
               onAddAuthor={(author) => cms.saveAuthor(author)}
+              onSaveAuthor={(author) => cms.saveAuthor(author)}
               onUpdateAuthorRole={(id, role) => cms.updateAuthorRole(id, role)}
               onDeleteAuthor={(id) => cms.deleteAuthor(id)}
               currentUserEmail={authState?.currentUser?.email}
               onNavigateToSecurity={() => setAdminView('account-security')}
+              siteUrl={cms.siteSettings?.siteUrl}
             />
           )}
 
