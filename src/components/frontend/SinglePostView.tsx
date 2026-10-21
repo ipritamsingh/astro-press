@@ -352,13 +352,7 @@ export const SinglePostView: React.FC<Props> = ({
 
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span>
-                  {(function(d) {
-      if (!d) return '';
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) return String(d).split('T')[0];
-      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
-    })(post.pubDate)}
+                  {new Date(post.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
@@ -642,13 +636,7 @@ export const SinglePostView: React.FC<Props> = ({
                     <div>
                       <span className="text-sm font-bold text-slate-900 block">{comm.authorName}</span>
                       <span className="text-[11px] text-slate-400">
-                        {(function(d) {
-      if (!d) return '';
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) return String(d).split('T')[0];
-      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
-    })(comm.date)}
+                        {new Date(comm.date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
                   </div>

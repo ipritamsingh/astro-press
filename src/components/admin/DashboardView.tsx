@@ -226,13 +226,7 @@ export const DashboardView: React.FC<Props> = ({
                       <span>•</span>
                       <span>By {post.author}</span>
                       <span>•</span>
-                      <span>{(function(d) {
-      if (!d) return '';
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) return String(d).split('T')[0];
-      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
-    })(post.pubDate)}</span>
+                      <span>{new Date(post.pubDate).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>

@@ -64,5 +64,50 @@
     "placeholderText": "Enter your email address",
     "buttonText": "Subscribe",
     "successMessage": "Thanks for subscribing to The Headless Dispatch!"
+  },
+  "adsSettings": {
+    "adsEnabled": false,
+    "publisherId": "",
+    "homeSlot1": {
+      "enabled": false,
+      "adUnitId": "",
+      "deviceVisibility": "all",
+      "format": "auto",
+      "order": 1
+    },
+    "homeSlot2": {
+      "enabled": false,
+      "adUnitId": "",
+      "deviceVisibility": "all",
+      "format": "auto",
+      "order": 2
+    },
+    "postSlot1": {
+      "enabled": false,
+      "adUnitId": "",
+      "deviceVisibility": "all",
+      "format": "auto"
+    },
+    "postSlot2": {
+      "enabled": false,
+      "adUnitId": "",
+      "deviceVisibility": "all",
+      "format": "auto",
+      "contentParagraphIndex": 2
+    },
+    "postSlot3": {
+      "enabled": false,
+      "adUnitId": "",
+      "deviceVisibility": "all",
+      "format": "auto"
+    },
+    "sharedBottomSlot": {
+      "enabled": false,
+      "showOnHomepage": false,
+      "showOnArticles": false,
+      "adUnitId": "",
+      "deviceVisibility": "all",
+      "format": "auto"
+    }
   }
 }
