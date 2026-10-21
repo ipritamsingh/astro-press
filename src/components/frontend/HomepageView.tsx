@@ -140,7 +140,13 @@ export const HomepageView: React.FC<Props> = ({
                     >
                       {post.author}
                     </a>
-                    <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
+                    <span>{(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(post.pubDate)}</span>
                   </div>
                 </div>
               </article>
@@ -298,11 +304,13 @@ export const HomepageView: React.FC<Props> = ({
                             {heroPost.author}
                           </a>
                           <span className="text-xs text-slate-400">
-                            {new Date(heroPost.pubDate).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
+                            {(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(heroPost.pubDate)}
                           </span>
                         </div>
                       </div>
@@ -401,7 +409,13 @@ export const HomepageView: React.FC<Props> = ({
                       <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
+                            <span>{(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(post.pubDate)}</span>
                             <span>•</span>
                             <span>{post.readingTime} min read</span>
                           </div>
@@ -490,7 +504,13 @@ export const HomepageView: React.FC<Props> = ({
                           >
                             {post.author}
                           </a>
-                          <span>{new Date(post.pubDate).toLocaleDateString('en-US')}</span>
+                          <span>{(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(post.pubDate)}</span>
                         </div>
                       </div>
                     </article>

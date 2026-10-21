@@ -128,9 +128,12 @@ export const SinglePostView: React.FC<Props> = ({
   // URL resolution for canonical sharing
   const canonicalOrigin = (siteUrl || '').replace(/\/+$/, '');
   const cleanPostSlug = (post.slug || '').replace(/^\/+|\/+$/g, '');
-  const articleUrl = typeof window !== 'undefined' && window.location.href
-    ? window.location.href.split('?')[0].split('#')[0]
-    : `${canonicalOrigin}/${cleanPostSlug}/`;
+  const [articleUrl, setArticleUrl] = React.useState<string>(() => `${canonicalOrigin}/${cleanPostSlug}/`);
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.href) {
+      setArticleUrl(window.location.href.split('?')[0].split('#')[0]);
+    }
+  }, []);
 
   const handleCopyLink = async () => {
     try {
@@ -349,11 +352,13 @@ export const SinglePostView: React.FC<Props> = ({
 
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span>
-                  {new Date(post.pubDate).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  {(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(post.pubDate)}
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
@@ -637,7 +642,13 @@ export const SinglePostView: React.FC<Props> = ({
                     <div>
                       <span className="text-sm font-bold text-slate-900 block">{comm.authorName}</span>
                       <span className="text-[11px] text-slate-400">
-                        {new Date(comm.date).toLocaleDateString('en-US')}
+                        {(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(comm.date)}
                       </span>
                     </div>
                   </div>

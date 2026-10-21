@@ -385,7 +385,13 @@ export const PostsManager: React.FC<Props> = ({
                       <td className="p-3.5 whitespace-nowrap">
                         {activeTab === 'trash' ? (
                             <span className="text-slate-500 text-[11px]">
-                                {post.deletedAt ? new Date(post.deletedAt).toLocaleDateString() : 'N/A'}
+                                {post.deletedAt ? (function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(post.deletedAt) : 'N/A'}
                             </span>
                         ) : (
                         <span
@@ -412,7 +418,13 @@ export const PostsManager: React.FC<Props> = ({
                                return diffDays <= 0 ? 'Expired' : (diffDays < 1 ? 'Less than 1 day' : `${diffDays} days remaining`);
                            })()
                         ) : (
-                            new Date(post.pubDate).toLocaleDateString()
+                            (function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(post.pubDate)
                         )}
                       </td>
 

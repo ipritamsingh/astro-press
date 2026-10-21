@@ -92,11 +92,13 @@ export const CommentsIsland: React.FC<Props> = ({
                       {comm.authorName}
                     </span>
                     <span className="block text-[11px] text-slate-400">
-                      {new Date(comm.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
+                      {(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(comm.date)}
                     </span>
                   </div>
                 </div>
@@ -116,7 +118,13 @@ export const CommentsIsland: React.FC<Props> = ({
                           {rep.authorName}
                         </span>
                         <span className="text-[10px] text-slate-400">
-                          {new Date(rep.date).toLocaleDateString()}
+                          {(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(rep.date)}
                         </span>
                       </div>
                       <p className="text-xs text-slate-600">{rep.content}</p>
