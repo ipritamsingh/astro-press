@@ -134,6 +134,15 @@ export const GitHubDeploymentView: React.FC<Props> = ({
     message: string;
     noChanges?: boolean;
     failedFiles?: { path: string; error: string }[];
+    diagnostics?: {
+      localFilesCount: number;
+      remoteFilesCount: number;
+      modifiedFilesCount: number;
+      modifiedFiles: string[];
+      hasAuthorFiles: boolean;
+      modifiedAuthorFiles: string[];
+      zeroChangeReason?: string;
+    };
   } | null>(null);
 
   const draftPosts = posts.filter((p) => p.status === 'draft');
@@ -423,7 +432,40 @@ export const GitHubDeploymentView: React.FC<Props> = ({
           </div>
 
           {pushResultSummary.success && (
-            <div className="pt-3 border-t border-slate-200 space-y-2 text-xs font-mono text-slate-700">
+            <div className="pt-3 border-t border-slate-200 space-y-3 text-xs font-mono text-slate-700">
+              {pushResultSummary.diagnostics && (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2 font-sans">
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-purple-600 inline-block" />
+                    <span>Synchronization Diagnostics & Tree Comparison:</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+                    <div className="bg-white p-2 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block font-sans">Local Files</span>
+                      <strong className="text-slate-800">{pushResultSummary.diagnostics.localFilesCount}</strong>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block font-sans">Remote Files</span>
+                      <strong className="text-slate-800">{pushResultSummary.diagnostics.remoteFilesCount}</strong>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block font-sans">Modified</span>
+                      <strong className="text-slate-800">{pushResultSummary.diagnostics.modifiedFilesCount}</strong>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block font-sans">Author Files</span>
+                      <strong className={pushResultSummary.diagnostics.hasAuthorFiles ? 'text-emerald-600' : 'text-slate-600'}>
+                        {pushResultSummary.diagnostics.hasAuthorFiles ? 'Included ✓' : 'None'}
+                      </strong>
+                    </div>
+                  </div>
+                  {pushResultSummary.diagnostics.zeroChangeReason && (
+                    <div className="bg-amber-50 text-amber-900 p-2 rounded-lg border border-amber-200 text-[11px]">
+                      <strong>Zero-Change Reason:</strong> {pushResultSummary.diagnostics.zeroChangeReason}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold">

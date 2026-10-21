@@ -99,6 +99,7 @@ import { SeoManager } from './components/admin/SeoManager';
 import { SettingsManager } from './components/admin/SettingsManager';
 import { BackupRestoreManager } from './components/admin/BackupRestoreManager';
 import { UsersManager } from './components/admin/UsersManager';
+import { UsersAccessManager } from './components/admin/UsersAccessManager';
 import { ToolsExporter } from './components/admin/ToolsExporter';
 import { SveltiaNativeFrame } from './components/admin/SveltiaNativeFrame';
 import { GitHubDeploymentView } from './components/admin/GitHubDeploymentView';
@@ -1493,7 +1494,13 @@ export default function App(props: AppProps = {}) {
             <AccountSecurityManager onAuthStateChange={refreshAuth} />
           )}
 
-          {(adminView === 'users' || adminView === 'authors') && (
+          {adminView === 'users' && (
+            <UsersAccessManager
+              onAuthStateChange={refreshAuth}
+              onNavigateToAuthors={() => setAdminView('authors')}
+            />
+          )}
+          {adminView === 'authors' && (
             <UsersManager
               authors={cms.authors}
               posts={cms.posts}
@@ -1503,7 +1510,7 @@ export default function App(props: AppProps = {}) {
               onUpdateAuthorRole={(id, role) => cms.updateAuthorRole(id, role)}
               onDeleteAuthor={(id) => cms.deleteAuthor(id)}
               currentUserEmail={authState?.currentUser?.email}
-              onNavigateToSecurity={() => setAdminView('account-security')}
+              onNavigateToSecurity={() => setAdminView('users')}
               siteUrl={cms.siteSettings?.siteUrl}
             />
           )}

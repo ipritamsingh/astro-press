@@ -342,6 +342,15 @@ let inFlightDeploymentPromise: Promise<{
   verifiedRootFiles?: string[];
   message: string;
   noChanges?: boolean;
+  diagnostics?: {
+    localFilesCount: number;
+    remoteFilesCount: number;
+    modifiedFilesCount: number;
+    modifiedFiles: string[];
+    hasAuthorFiles: boolean;
+    modifiedAuthorFiles: string[];
+    zeroChangeReason?: string;
+  };
 }> | null = null;
 
 export interface FullPushPayload {
@@ -815,6 +824,36 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
     }
   });
 
+  const hasAuthorFiles = allCandidatePaths.some(
+    (p) =>
+      p.toLowerCase().includes('author') ||
+      p.toLowerCase().includes('usersmanager') ||
+      p.toLowerCase().includes('authorprofile')
+  );
+  const modifiedAuthorFiles = modifiedFilePaths.filter(
+    (p) =>
+      p.toLowerCase().includes('author') ||
+      p.toLowerCase().includes('usersmanager') ||
+      p.toLowerCase().includes('authorprofile')
+  );
+
+  const zeroChangeReason =
+    modifiedTreeItems.length === 0
+      ? `All ${totalCandidateFiles} local candidate files matched remote Git tree entries (${remoteTreeMap.size} remote files) exactly by SHA-1 blob hash. No modifications detected.`
+      : undefined;
+
+  const diagnostics = {
+    localFilesCount: totalCandidateFiles,
+    remoteFilesCount: remoteTreeMap.size,
+    modifiedFilesCount: modifiedFilePaths.length,
+    modifiedFiles: modifiedFilePaths,
+    hasAuthorFiles,
+    modifiedAuthorFiles,
+    zeroChangeReason,
+  };
+
+  console.log('[Deploy Diagnostics Summary]', diagnostics);
+
   // 7. Check if there are pending changes (Requirement 13)
   if (modifiedTreeItems.length === 0) {
     if (onProgress) {
@@ -830,6 +869,7 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
       commitUrl: `https://github.com/${owner}/${repoName}/commit/${headSha}`,
       message: 'All site content and files are already up to date on GitHub. No deployment needed (0 pushes, 0 Cloudflare builds).',
       noChanges: true,
+      diagnostics,
     };
   }
 
@@ -1018,6 +1058,7 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
     commitSha: newCommitSha,
     commitUrl,
     message: `Successfully published all ${modifiedTreeItems.length} accumulated changes to GitHub in 1 atomic commit (${shortSha}) and 1 push! Exactly 1 Cloudflare Pages build triggered.`,
+    diagnostics,
   };
 }
 
