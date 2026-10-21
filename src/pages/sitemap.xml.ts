@@ -19,7 +19,8 @@ import { initialAuthors } from '../data/initialData';
  */
 export const GET: APIRoute = async () => {
   const settings: any = (siteSettingsJson as any) || {};
-  const base = (settings.siteUrl || '').replace(/\/+$/, '');
+  const rawBase = (settings.siteUrl || '').trim();
+  const base = (rawBase === 'https://astropress.pages.dev' || !rawBase ? 'https://astro-press.pages.dev' : rawBase).replace(/\/+$/, '');
   const indexing = settings.indexingSettings || {};
 
   const urls: { loc: string; changefreq: string; priority: string }[] = [];

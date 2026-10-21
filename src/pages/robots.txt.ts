@@ -14,7 +14,8 @@ import siteSettingsJson from '../data/siteSettings.json';
  */
 export const GET: APIRoute = async () => {
   const settings: any = (siteSettingsJson as any) || {};
-  const siteUrl = (settings.siteUrl || '').replace(/\/+$/, '');
+  const rawSiteUrl = (settings.siteUrl || '').trim();
+  const siteUrl = (rawSiteUrl === 'https://astropress.pages.dev' || !rawSiteUrl ? 'https://astro-press.pages.dev' : rawSiteUrl).replace(/\/+$/, '');
   const indexing = settings.indexingSettings || {};
 
   const disallowAll = indexing.globalIndexing === false;

@@ -54,7 +54,7 @@ export const SeoManager: React.FC<Props> = ({
       themeSettings.tagline ||
       'High-performance headless publishing platform powered by Astro, Sveltia CMS, Cloudflare Pages, and GitHub content storage.'
   );
-  const [siteUrl, setSiteUrl] = useState(siteSettings?.siteUrl || 'https://astropress.pages.dev');
+  const [siteUrl, setSiteUrl] = useState(siteSettings?.siteUrl || 'https://astro-press.pages.dev');
   const [logoUrl, setLogoUrl] = useState(siteSettings?.logoUrl || themeSettings.logoUrl || '');
   const [faviconUrl, setFaviconUrl] = useState(siteSettings?.faviconUrl || themeSettings.faviconUrl || '');
   const [defaultOgImage, setDefaultOgImage] = useState(
@@ -160,7 +160,7 @@ export const SeoManager: React.FC<Props> = ({
     setTimeout(() => setSaveSuccess(false), 2000);
   };
 
-  const canonicalDomain = siteUrl ? siteUrl.replace(/\/+$/, '') : 'https://astropress.pages.dev';
+  const canonicalDomain = siteUrl ? siteUrl.replace(/\/+$/, '') : 'https://astro-press.pages.dev';
 
   // Generate dynamic XML sitemap
   const generateSitemapXml = () => {
@@ -357,7 +357,7 @@ Sitemap: ${canonicalDomain}/sitemap.xml`;
                 type="url"
                 value={siteUrl}
                 onChange={(e) => setSiteUrl(e.target.value)}
-                placeholder="https://astropress.pages.dev"
+                placeholder="https://astro-press.pages.dev"
                 className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-mono"
               />
             </div>

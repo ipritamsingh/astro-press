@@ -1008,7 +1008,7 @@ export const initialSiteSettings: SiteSettings = {
   siteTagline: 'WordPress Editorial Ergonomics with Astro Performance',
   siteDescription:
     'Production-ready headless CMS builder combining Sveltia CMS, Astro frontend architecture, Gutenberg-style block editor, theme customizer, GitHub backend, and Cloudflare Pages deployment.',
-  siteUrl: 'https://astropress.pages.dev',
+  siteUrl: 'https://astro-press.pages.dev',
   logoUrl: '',
   faviconUrl: '',
   defaultOgImage:

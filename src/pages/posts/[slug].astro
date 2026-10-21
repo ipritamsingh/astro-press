@@ -7,7 +7,8 @@ import siteSettingsJson from '../../data/siteSettings.json';
 
 const siteSettings: any = (siteSettingsJson as any) || {};
 const siteTitle: string = siteSettings.siteTitle || 'AstroPress';
-const siteUrl: string = siteSettings.siteUrl || '';
+const rawSiteUrl: string = (siteSettings.siteUrl || '').trim();
+const siteUrl: string = (rawSiteUrl === 'https://astropress.pages.dev' || !rawSiteUrl ? 'https://astro-press.pages.dev' : rawSiteUrl).replace(/\/+$/, '');
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');

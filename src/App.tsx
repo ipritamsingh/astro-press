@@ -409,7 +409,7 @@ export default function App(props: AppProps = {}) {
     const siteTitle = cms.siteSettings?.siteTitle || cms.themeSettings.siteName || 'AstroPress';
     const siteTagline = cms.siteSettings?.siteTagline || cms.themeSettings.tagline || '';
     const siteDesc = cms.siteSettings?.siteDescription || siteTagline || 'AstroPress — Modern Astro & Sveltia CMS Platform';
-    const siteUrl = cms.siteSettings?.siteUrl || 'https://astropress.pages.dev';
+    const siteUrl = cms.siteSettings?.siteUrl || 'https://astro-press.pages.dev';
     const defaultOg = cms.siteSettings?.defaultOgImage || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80';
     const twitterHandle = cms.siteSettings?.seoSocialProfiles?.twitterHandle || '@astropress';
 
