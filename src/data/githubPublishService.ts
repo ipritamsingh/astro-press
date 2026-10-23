@@ -276,6 +276,26 @@ export async function checkGitHubConnection(
 
   if (response.status === 403) {
     const body = await response.json().catch(() => ({}));
+    const remaining = response.headers.get('x-ratelimit-remaining');
+    const resetHeader = response.headers.get('x-ratelimit-reset');
+    const retryAfter = response.headers.get('retry-after');
+    const apiMessage = (body.message || '').toLowerCase();
+
+    let diagnosticMessage = `GitHub API Forbidden (403): ${body.message || 'Permission denied.'}`;
+
+    if (remaining === '0' || apiMessage.includes('rate limit') || apiMessage.includes('secondary rate limit') || retryAfter) {
+      let resetTimeInfo = '';
+      if (resetHeader) {
+        const resetTimestamp = parseInt(resetHeader, 10) * 1000;
+        if (!isNaN(resetTimestamp)) {
+          resetTimeInfo = ` Reset at ${new Date(resetTimestamp).toLocaleTimeString()}.`;
+        }
+      }
+      diagnosticMessage = `GitHub API Rate Limit Exceeded (403). The GITHUB_PAT has exhausted its request quota.${resetTimeInfo} Please wait before retrying.`;
+    } else if (apiMessage.includes('resource not accessible by integration') || apiMessage.includes('permissions') || apiMessage.includes('scope')) {
+      diagnosticMessage = `GitHub API Access Denied (403): Insufficient repository permissions. Ensure the GITHUB_PAT has "Contents: Read and write" access to repository "${fullRepo}".`;
+    }
+
     return {
       connected: false,
       repo: fullRepo,
@@ -283,7 +303,7 @@ export async function checkGitHubConnection(
       latencyMs,
       statusCode: 403,
       lastChecked: new Date().toLocaleTimeString(),
-      message: `GitHub API Forbidden (403): ${body.message || 'Rate limit exceeded or permission denied.'}`,
+      message: diagnosticMessage,
     };
   }
 
