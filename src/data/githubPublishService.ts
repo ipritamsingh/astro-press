@@ -178,8 +178,34 @@ export async function checkGitHubConnection(
     }
   }
 
-  // Server-side fallback logic
+  // Server-side execution logic
   const cleanToken = token?.trim();
+  const hasProxy = workerProxyUrl && workerProxyUrl.trim() && !isAuthenticatorWorkerUrl(workerProxyUrl);
+
+  const directUrl = `https://api.github.com/repos/${cleanOwner}/${cleanRepo}`;
+  const targetUrl = hasProxy ? `${workerProxyUrl!.trim()}/repos/${cleanOwner}/${cleanRepo}` : directUrl;
+
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github.v3+json',
+  };
+
+  if (cleanToken) {
+    headers['Authorization'] = `Bearer ${cleanToken}`;
+  }
+
+  let response: Response | null = null;
+  let isFallback = false;
+
+  try {
+    response = await fetch(targetUrl, { method: 'GET', headers });
+  } catch (err: any) {
+    if (hasProxy) {
+      try {
+        response = await fetch(directUrl, { method: 'GET', headers });
+        isFallback = true;
+      } catch (fallbackErr: any) {}
+    }
+  }
 
   const latencyMs = Date.now() - start;
 
