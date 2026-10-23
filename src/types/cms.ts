@@ -677,7 +677,6 @@ export interface GitCommitRecord {
 export interface DeploymentSettings {
   githubRepo: string;
   githubBranch: string;
-  githubToken?: string;
   cloudflareWorkerUrl: string;
   cloudflarePagesProject: string;
   productionUrl: string;

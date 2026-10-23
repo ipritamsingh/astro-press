@@ -93,8 +93,6 @@ export const GitHubDeploymentView: React.FC<Props> = ({
   const [owner, setOwner] = useState(initialOwner || 'ipritamsingh');
   const [repoName, setRepoName] = useState(initialRepoName || 'astropress');
   const [branch, setBranch] = useState(deploymentSettings.githubBranch || 'main');
-  const [token, setToken] = useState(sessionToken || deploymentSettings.githubToken || '');
-  const [showToken, setShowToken] = useState(false);
   const initialWorker =
     deploymentSettings.cloudflareWorkerUrl?.includes('sveltia-authenticator') ||
     deploymentSettings.cloudflareWorkerUrl?.includes('authenticator.workers.dev')
@@ -154,7 +152,7 @@ export const GitHubDeploymentView: React.FC<Props> = ({
   const handleCheckConnection = async () => {
     setIsChecking(true);
     try {
-      const status = await checkGitHubConnection(owner, repoName, branch, token, workerUrl);
+      const status = await checkGitHubConnection(owner, repoName, branch, undefined, workerUrl);
       setConnectionStatus(status);
       if (onUpdateGithubSyncStatus) {
         onUpdateGithubSyncStatus(status.connected ? 'Connected' : 'Error');
@@ -178,12 +176,6 @@ export const GitHubDeploymentView: React.FC<Props> = ({
   };
 
   const handleBatchPushToGitHub = async () => {
-    const activeToken = (token || sessionToken || '').trim();
-    if (!activeToken) {
-      alert('Please enter your GitHub Personal Access Token (PAT) first in the form below.');
-      return;
-    }
-
     setIsPublishingBatch(true);
     setPushResultSummary(null);
     setPushProgress({ current: 0, total: 1, filePath: 'Preparing files for sync...', status: 'pushing' });
@@ -197,9 +189,8 @@ export const GitHubDeploymentView: React.FC<Props> = ({
       const settings: DeploymentSettings = {
         githubRepo: `${owner.trim()}/${repoName.trim()}`,
         githubBranch: branch.trim() || 'main',
-        githubToken: activeToken,
         cloudflareWorkerUrl: workerUrl.trim(),
-        cloudflarePagesProject: deploymentSettings.cloudflarePagesProject || 'astropress',
+        cloudflarePagesProject: cloudflarePagesProject.trim(),
         productionUrl: productionUrl.trim(),
         autoDeployOnPublish: autoDeploy,
       };
@@ -269,15 +260,10 @@ export const GitHubDeploymentView: React.FC<Props> = ({
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     const fullRepo = `${owner.trim()}/${repoName.trim()}`;
-    
-    if (onUpdateSessionToken) {
-      onUpdateSessionToken(token);
-    }
 
     onUpdateDeploymentSettings({
       githubRepo: fullRepo,
       githubBranch: branch.trim() || 'main',
-      githubToken: token.trim(),
       productionUrl: productionUrl.trim(),
       cloudflarePagesProject: cloudflarePagesProject.trim(),
       cloudflareWorkerUrl: workerUrl.trim(),
@@ -324,7 +310,7 @@ export const GitHubDeploymentView: React.FC<Props> = ({
 
           <button
             onClick={handleBatchPushToGitHub}
-            disabled={isPublishingBatch || (!token && !sessionToken)}
+            disabled={isPublishingBatch || !owner || !repoName}
             className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs text-white shadow-md transition-all disabled:opacity-50 cursor-pointer ${
               pushResultSummary?.success
                 ? 'bg-emerald-600 hover:bg-emerald-700'
@@ -581,7 +567,7 @@ export const GitHubDeploymentView: React.FC<Props> = ({
             </div>
           </div>
           <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>PAT: {token ? 'Entered (In Memory)' : 'Not Configured'}</span>
+            <span>PAT: Server-Side Secret</span>
             <span>{connectionStatus?.lastChecked ? `Checked ${connectionStatus.lastChecked}` : 'Click Test'}</span>
           </div>
         </div>
@@ -744,31 +730,15 @@ export const GitHubDeploymentView: React.FC<Props> = ({
             </span>
           </div>
 
-          {/* GitHub PAT */}
-          <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">
-              GitHub Personal Access Token (PAT)
-            </label>
-            <div className="relative">
-              <input
-                type={showToken ? 'text' : 'password'}
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="ghp_... or github_pat_..."
-                className="w-full p-2.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs outline-none focus:border-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowToken(!showToken)}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700"
-                title={showToken ? 'Hide Token' : 'Show Token'}
-              >
-                {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+          {/* Server-Side GITHUB_PAT Security Notice */}
+          <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-xl space-y-1">
+            <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
+              <ShieldCheck className="h-4 w-4 text-purple-600" />
+              <span>Secure Server-Side GitHub PAT (GITHUB_PAT)</span>
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Required permissions: <strong>Contents: Read and write</strong>. Token stays in runtime memory.
-            </span>
+            <p className="text-[11px] text-purple-800 leading-relaxed">
+              GitHub authentication is securely managed via Cloudflare Pages environment secrets. No token storage is required in the browser.
+            </p>
           </div>
 
           {/* Cloudflare Pages Project Name */}

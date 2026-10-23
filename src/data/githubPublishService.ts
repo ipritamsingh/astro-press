@@ -147,36 +147,39 @@ export async function checkGitHubConnection(
     };
   }
 
-  const cleanToken = token?.trim();
-  const hasProxy = workerProxyUrl && workerProxyUrl.trim() && !isAuthenticatorWorkerUrl(workerProxyUrl);
-
-  const directUrl = `https://api.github.com/repos/${cleanOwner}/${cleanRepo}`;
-  const targetUrl = hasProxy ? `${workerProxyUrl!.trim()}/repos/${cleanOwner}/${cleanRepo}` : directUrl;
-
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github.v3+json',
-  };
-
-  if (cleanToken) {
-    headers['Authorization'] = `Bearer ${cleanToken}`;
-  }
-
-  let response: Response | null = null;
-  let isFallback = false;
-
-  try {
-    response = await fetch(targetUrl, { method: 'GET', headers });
-  } catch (err: any) {
-    // If proxy failed, fallback directly to GitHub REST API
-    if (hasProxy) {
-      try {
-        response = await fetch(directUrl, { method: 'GET', headers });
-        isFallback = true;
-      } catch (fallbackErr: any) {
-        // Direct fetch also failed
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/github/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner: cleanOwner, repoName: cleanRepo, branch, workerUrl: workerProxyUrl }),
+      });
+      if (res.ok) {
+        return await res.json();
       }
+      const errData = await res.json().catch(() => ({}));
+      return {
+        connected: false,
+        repo: fullRepo,
+        branch,
+        latencyMs: Date.now() - start,
+        lastChecked: new Date().toLocaleTimeString(),
+        message: errData.error || `Connection verification failed (status ${res.status}). Ensure GITHUB_PAT is configured in Cloudflare Pages.`,
+      };
+    } catch (err: any) {
+      return {
+        connected: false,
+        repo: fullRepo,
+        branch,
+        latencyMs: Date.now() - start,
+        lastChecked: new Date().toLocaleTimeString(),
+        message: `Network error connecting to server endpoint: ${err.message || 'Unknown error'}.`,
+      };
     }
   }
+
+  // Server-side fallback logic
+  const cleanToken = token?.trim();
 
   const latencyMs = Date.now() - start;
 
@@ -391,6 +394,35 @@ export async function executeAtomicBulkDeploy(payload: FullPushPayload): Promise
   message: string;
   noChanges?: boolean;
 }> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/github/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+      const errData = await res.json().catch(() => ({}));
+      return {
+        success: false,
+        totalPushed: 0,
+        totalFiles: 0,
+        failedFiles: [],
+        message: errData.error || `Publish request failed (status ${res.status}). Ensure GITHUB_PAT is configured on Cloudflare Pages.`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        totalPushed: 0,
+        totalFiles: 0,
+        failedFiles: [],
+        message: `Network error connecting to publishing endpoint: ${err.message || 'Unknown error'}`,
+      };
+    }
+  }
+
   if (inFlightDeploymentPromise) {
     console.log('[Deploy] A deployment is already running. Reusing active deployment to prevent duplicate push.');
     return inFlightDeploymentPromise;
