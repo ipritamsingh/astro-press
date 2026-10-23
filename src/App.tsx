@@ -97,6 +97,7 @@ import { GutenbergEditor } from './components/admin/GutenbergEditor';
 import { ThemeCustomizer } from './components/admin/ThemeCustomizer';
 import { SeoManager } from './components/admin/SeoManager';
 import { SettingsManager } from './components/admin/SettingsManager';
+import { AdsManager } from './components/admin/AdsManager';
 import { BackupRestoreManager } from './components/admin/BackupRestoreManager';
 import { UsersManager } from './components/admin/UsersManager';
 import { UsersAccessManager } from './components/admin/UsersAccessManager';
@@ -167,29 +168,17 @@ export default function App(props: AppProps = {}) {
   const [resetToken, setResetToken] = useState<string>('');
 
   // Mode: 'frontend' website or 'admin' WordPress panel (accessible via /wpadmin, #admin, ?admin=true)
-  const [mode, setMode] = useState<'frontend' | 'admin'>(() => {
+  const [mode, setMode] = useState<'frontend' | 'admin'>('frontend');
+  const [adminView, setAdminView] = useState<AdminView>('dashboard');
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      const search = window.location.search;
-      const hash = window.location.hash;
-      if (
-        path.startsWith('/wpadmin') ||
-        path.startsWith('/dashboard') ||
-        search.includes('admin=true') ||
-        search.includes('token=') ||
-        hash === '#admin'
-      ) {
-        return 'admin';
+      const storedView = localStorage.getItem('astropress_admin_view') as AdminView;
+      if (storedView) {
+        setAdminView(storedView);
       }
     }
-    return 'frontend';
-  });
-  const [adminView, setAdminView] = useState<AdminView>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('astropress_admin_view') as AdminView) || 'dashboard';
-    }
-    return 'dashboard';
-  });
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1024,6 +1013,7 @@ export default function App(props: AppProps = {}) {
                 onSelectCategory={handleSelectCategory}
                 onSelectAuthor={handleSelectAuthor}
                 authors={cms.authors}
+                siteSettings={cms.siteSettings}
               />
             )}
 
@@ -1048,6 +1038,7 @@ export default function App(props: AppProps = {}) {
                 }}
                 onSelectAuthor={handleSelectAuthor}
                 siteUrl={cms.siteSettings?.siteUrl}
+                siteSettings={cms.siteSettings}
               />
             )}
 
@@ -1460,6 +1451,13 @@ export default function App(props: AppProps = {}) {
               onUpdateSettings={(s) => cms.updateThemeSettings(s)}
               onUpdateSiteSettings={(s) => cms.updateSiteSettings(s)}
               onResetDefaults={() => cms.resetToFactoryDefaults()}
+            />
+          )}
+
+          {adminView === 'ads-manager' && (
+            <AdsManager
+              siteSettings={cms.siteSettings}
+              onUpdateSiteSettings={(s) => cms.updateSiteSettings(s)}
             />
           )}
 

@@ -186,6 +186,40 @@ export function loadStoredData(seed?: Partial<CMSDataState>): CMSDataState {
         Array.isArray(rawSiteSettings.communityLinks)
           ? rawSiteSettings.communityLinks
           : initialSiteSettings.communityLinks,
+      adsSettings: {
+        ...initialSiteSettings.adsSettings!,
+        ...(rawSiteSettings.adsSettings || {}),
+        homeSlot1: {
+          ...initialSiteSettings.adsSettings!.homeSlot1,
+          ...(rawSiteSettings.adsSettings?.homeSlot1 || {}),
+        },
+        homeSlot2: {
+          ...initialSiteSettings.adsSettings!.homeSlot2,
+          ...(rawSiteSettings.adsSettings?.homeSlot2 || {}),
+        },
+        postSlot1: {
+          ...initialSiteSettings.adsSettings!.postSlot1,
+          ...(rawSiteSettings.adsSettings?.postSlot1 || {}),
+        },
+        postSlot2: {
+          ...initialSiteSettings.adsSettings!.postSlot2,
+          ...(rawSiteSettings.adsSettings?.postSlot2 || {}),
+        },
+        postSlot3: {
+          ...initialSiteSettings.adsSettings!.postSlot3,
+          ...(rawSiteSettings.adsSettings?.postSlot3 || {}),
+        },
+        sharedBottomSlot: {
+          ...initialSiteSettings.adsSettings!.sharedBottomSlot,
+          ...(rawSiteSettings.adsSettings?.sharedBottomSlot || {}),
+        },
+        homeSlots: Array.isArray(rawSiteSettings.adsSettings?.homeSlots)
+          ? rawSiteSettings.adsSettings.homeSlots
+          : initialSiteSettings.adsSettings?.homeSlots || [],
+        articleSlots: Array.isArray(rawSiteSettings.adsSettings?.articleSlots)
+          ? rawSiteSettings.adsSettings.articleSlots
+          : initialSiteSettings.adsSettings?.articleSlots || [],
+      },
     };
 
     let loadedHeroConfig = parsed.heroConfig || initialHeroConfig;
@@ -384,8 +418,8 @@ export function useCMS(seed?: Partial<CMSDataState>) {
   // browser's HTML parser silently restructures. That restructures the DOM
   // relative to what React emitted on the server, so SSR'ing these routes
   // produces a React #418 hydration mismatch even though the rendered text is
-  // byte-identical. See the note in src/pages/[slug].astro.
-  const [data, setData] = useState<CMSDataState>(() => loadStoredData(seed));
+  // Use stateFromSeed for initial render so server and client match 100% during hydration
+  const [data, setData] = useState<CMSDataState>(() => stateFromSeed(seed));
 
   const syncWithAuthoritativeRemote = async (customSettings?: DeploymentSettings, customToken?: string): Promise<boolean> => {
     const settings = customSettings || data.deploymentSettings;
@@ -467,6 +501,16 @@ export function useCMS(seed?: Partial<CMSDataState>) {
   };
 
   useEffect(() => {
+    // Safely synchronize client localStorage copy after hydration completes
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = loadStoredData(seed);
+        setData(stored);
+      } catch (err) {
+        console.warn('Failed to load stored CMS data', err);
+      }
+    }
+
     // Run authoritative sync on mount in background
     syncWithAuthoritativeRemote().catch(() => {});
     

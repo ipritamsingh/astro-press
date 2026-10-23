@@ -373,6 +373,63 @@ export interface SeoSocialProfiles {
   githubUrl?: string;
 }
 
+export type HomepageAdPlacement =
+  | 'below_navigation'
+  | 'below_hero'
+  | 'before_articles'
+  | 'after_articles'
+  | 'below_pagination'
+  | 'before_community';
+
+export type ArticleAdPlacement =
+  | 'after_title'
+  | 'after_featured_image'
+  | 'in_content'
+  | 'after_body'
+  | 'before_related';
+
+export interface DynamicAdSlot {
+  id: string;
+  name: string;
+  enabled: boolean;
+  adUnitId: string;
+  placement: HomepageAdPlacement | ArticleAdPlacement | string;
+  deviceVisibility: 'all' | 'desktop' | 'mobile';
+  format: 'auto' | 'rectangle' | 'horizontal' | 'vertical';
+  order: number;
+  contentParagraphIndex?: number;
+}
+
+export interface AdSlotConfig {
+  id?: string;
+  name?: string;
+  enabled: boolean;
+  adUnitId: string;
+  placement?: HomepageAdPlacement | ArticleAdPlacement | string;
+  deviceVisibility: 'all' | 'desktop' | 'mobile';
+  format: 'auto' | 'rectangle' | 'horizontal' | 'vertical';
+  order?: number;
+  contentParagraphIndex?: number;
+}
+
+export interface SharedBottomAdSlotConfig extends AdSlotConfig {
+  showOnHomepage: boolean;
+  showOnArticles: boolean;
+}
+
+export interface AdSenseSettings {
+  adsEnabled: boolean;
+  publisherId: string;
+  homeSlot1: AdSlotConfig;
+  homeSlot2: AdSlotConfig;
+  postSlot1: AdSlotConfig;
+  postSlot2: AdSlotConfig;
+  postSlot3: AdSlotConfig;
+  sharedBottomSlot: SharedBottomAdSlotConfig;
+  homeSlots?: DynamicAdSlot[];
+  articleSlots?: DynamicAdSlot[];
+}
+
 export interface SiteSettings {
   siteTitle: string;
   siteTagline: string;
@@ -406,6 +463,7 @@ export interface SiteSettings {
   communityCtaSubtitle?: string;
   communityLinks?: CommunityLink[];
   newsletterSettings?: NewsletterSettings;
+  adsSettings?: AdSenseSettings;
 }
 
 export interface FooterSocialLink {

@@ -1,44 +1,8 @@
 import React, { useState } from 'react';
-import { Post, Page, GutenbergBlock, BlockType, PostSEO, MediaItem } from '../../types/cms';
+import { Post, Page, GutenbergBlock, BlockType, PostSEO, MediaItem, DeploymentSettings } from '../../types/cms';
 import { GutenbergBlockRenderer } from '../common/GutenbergBlockRenderer';
 import { processUploadedFile, getPersistedMediaBlob } from '../../data/mediaStorage';
-
-const EditorImagePreview: React.FC<{ src: string; alt?: string; className?: string; style?: React.CSSProperties }> = ({
-  src,
-  alt = '',
-  className,
-  style,
-}) => {
-  const [displaySrc, setDisplaySrc] = useState(src);
-
-  React.useEffect(() => {
-    setDisplaySrc(src);
-    if (src && (src.startsWith('/uploads/') || src.startsWith('uploads/') || src.startsWith('/public/uploads/'))) {
-      getPersistedMediaBlob(src)
-        .then((blob) => {
-          if (blob) setDisplaySrc(blob);
-        })
-        .catch(() => {});
-    }
-  }, [src]);
-
-  return (
-    <img
-      src={displaySrc || src}
-      alt={alt}
-      className={className}
-      style={style}
-      onError={async () => {
-        if (src) {
-          const fallback = await getPersistedMediaBlob(src);
-          if (fallback) setDisplaySrc(fallback);
-        }
-      }}
-    />
-  );
-};
 import { executeRealGitHubPublish, generateSlug, validateSlug } from '../../data/githubPublishService';
-import { DeploymentSettings } from '../../types/cms';
 import { MediaLibrary } from './MediaLibrary';
 import {
   Plus,
@@ -100,6 +64,41 @@ import {
   tableDataToMarkdown,
   TableBlockData,
 } from '../common/tableParser';
+
+const EditorImagePreview: React.FC<{ src: string; alt?: string; className?: string; style?: React.CSSProperties }> = ({
+  src,
+  alt = '',
+  className,
+  style,
+}) => {
+  const [displaySrc, setDisplaySrc] = useState(src);
+
+  React.useEffect(() => {
+    setDisplaySrc(src);
+    if (src && (src.startsWith('/uploads/') || src.startsWith('uploads/') || src.startsWith('/public/uploads/'))) {
+      getPersistedMediaBlob(src)
+        .then((blob) => {
+          if (blob) setDisplaySrc(blob);
+        })
+        .catch(() => {});
+    }
+  }, [src]);
+
+  return (
+    <img
+      src={displaySrc || src}
+      alt={alt}
+      className={className}
+      style={style}
+      onError={async () => {
+        if (src) {
+          const fallback = await getPersistedMediaBlob(src);
+          if (fallback) setDisplaySrc(fallback);
+        }
+      }}
+    />
+  );
+};
 
 interface Props {
   initialItem: Post | Page;

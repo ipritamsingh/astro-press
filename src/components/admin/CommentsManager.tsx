@@ -127,7 +127,13 @@ export const CommentsManager: React.FC<Props> = ({ comments, onUpdateStatus, onA
                     {comment.status}
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    {new Date(comment.date).toLocaleDateString()}
+                    {(function(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return m[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ', ' + dt.getUTCFullYear();
+    })(comment.date)}
                   </span>
                 </div>
               </div>

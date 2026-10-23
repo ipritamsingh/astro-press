@@ -127,7 +127,7 @@ const initialPage = isPage
     </script>
     <App
       client:load
-      seed={{ pages: [initialPage!] }}
+      seed={{ pages: [initialPage!], siteSettings }}
       initialRoute={{ type: 'page', page: initialPage! }}
     />
   ) : (
@@ -136,7 +136,7 @@ const initialPage = isPage
     </script>
     <App
       client:load
-      seed={{ posts: [initialPost!] }}
+      seed={{ posts: [initialPost!], siteSettings }}
       initialRoute={{ type: 'post', post: initialPost! }}
     />
   )}
