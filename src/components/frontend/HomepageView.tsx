@@ -1,7 +1,18 @@
-import React from 'react';
-import { Post, Category, HomepageSection, ThemeSettings, HeroSectionConfig, Author } from '../../types/cms';
+import React, { useMemo } from 'react';
+import {
+  Post,
+  Category,
+  HomepageSection,
+  ThemeSettings,
+  HeroSectionConfig,
+  Author,
+  SiteSettings,
+  DynamicAdSlot,
+  HomepageAdPlacement,
+} from '../../types/cms';
 import { HeroSection } from './HeroSection';
 import { PostCardImage } from '../common/PostCardImage';
+import { AdUnitWidget } from '../common/AdUnitWidget';
 import {
   Clock,
   User,
@@ -27,6 +38,7 @@ interface Props {
   onSelectCategory: (cat: Category) => void;
   onNavigate?: (path: string) => void;
   onSelectAuthor?: (author: Author) => void;
+  siteSettings?: SiteSettings;
 }
 
 export const HomepageView: React.FC<Props> = ({
@@ -42,6 +54,7 @@ export const HomepageView: React.FC<Props> = ({
   onSelectCategory,
   onNavigate,
   onSelectAuthor,
+  siteSettings,
 }) => {
   const publishedPosts = posts.filter((p) => p.status === 'published');
   const heroPost = publishedPosts[0];
@@ -96,10 +109,104 @@ export const HomepageView: React.FC<Props> = ({
   // Sort sections by order
   const sortedSections = [...sections].sort((a, b) => a.order - b.order);
 
+  const ads = siteSettings?.adsSettings;
+  const adsEnabled = Boolean(ads?.adsEnabled && ads?.publisherId);
+  const publisherId = ads?.publisherId || '';
+
+  const homeSlots: DynamicAdSlot[] = useMemo(() => {
+    if (!ads) return [];
+    if (Array.isArray(ads.homeSlots)) {
+      return ads.homeSlots.filter((s) => s.enabled && s.adUnitId).sort((a, b) => a.order - b.order);
+    }
+    const list: DynamicAdSlot[] = [];
+    if (ads.homeSlot1?.enabled && ads.homeSlot1?.adUnitId) {
+      list.push({
+        id: ads.homeSlot1.id || 'home-slot-1',
+        name: ads.homeSlot1.name || 'Homepage Slot 1',
+        enabled: true,
+        adUnitId: ads.homeSlot1.adUnitId,
+        placement: ads.homeSlot1.placement || 'below_hero',
+        deviceVisibility: ads.homeSlot1.deviceVisibility || 'all',
+        format: ads.homeSlot1.format || 'auto',
+        order: ads.homeSlot1.order ?? 1,
+      });
+    }
+    if (ads.homeSlot2?.enabled && ads.homeSlot2?.adUnitId) {
+      list.push({
+        id: ads.homeSlot2.id || 'home-slot-2',
+        name: ads.homeSlot2.name || 'Homepage Slot 2',
+        enabled: true,
+        adUnitId: ads.homeSlot2.adUnitId,
+        placement: ads.homeSlot2.placement || 'below_pagination',
+        deviceVisibility: ads.homeSlot2.deviceVisibility || 'all',
+        format: ads.homeSlot2.format || 'auto',
+        order: ads.homeSlot2.order ?? 2,
+      });
+    }
+    return list.sort((a, b) => a.order - b.order);
+  }, [ads]);
+
+  const renderedSlotIds = new Set<string>();
+  const renderedUnitIds = new Set<string>();
+
+  const renderSlotsForPlacement = (placement: HomepageAdPlacement) => {
+    if (!adsEnabled) return null;
+    const matchingSlots = homeSlots.filter(
+      (s) => s.placement === placement && !renderedSlotIds.has(s.id) && (!s.adUnitId || !renderedUnitIds.has(s.adUnitId))
+    );
+    if (matchingSlots.length === 0) return null;
+
+    return (
+      <div className="w-full my-6">
+        {matchingSlots.map((slot) => {
+          renderedSlotIds.add(slot.id);
+          if (slot.adUnitId) renderedUnitIds.add(slot.adUnitId);
+          return (
+            <AdUnitWidget
+              key={slot.id}
+              adsEnabled={adsEnabled}
+              publisherId={publisherId}
+              adUnitId={slot.adUnitId}
+              slotName={slot.name}
+              format={slot.format}
+              deviceVisibility={slot.deviceVisibility}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderSharedBottomSlot = () => {
+    if (!adsEnabled || !ads?.sharedBottomSlot?.enabled || !ads.sharedBottomSlot.showOnHomepage || !ads.sharedBottomSlot.adUnitId) {
+      return null;
+    }
+    const sharedId = ads.sharedBottomSlot.id || 'shared-bottom-slot';
+    const sharedUnitId = ads.sharedBottomSlot.adUnitId;
+    if (renderedSlotIds.has(sharedId) || (sharedUnitId && renderedUnitIds.has(sharedUnitId))) {
+      return null;
+    }
+    renderedSlotIds.add(sharedId);
+    if (sharedUnitId) renderedUnitIds.add(sharedUnitId);
+    return (
+      <div className="w-full my-8">
+        <AdUnitWidget
+          adsEnabled={adsEnabled}
+          publisherId={publisherId}
+          adUnitId={ads.sharedBottomSlot.adUnitId}
+          slotName="Shared Bottom Ad"
+          format={ads.sharedBottomSlot.format}
+          deviceVisibility={ads.sharedBottomSlot.deviceVisibility}
+        />
+      </div>
+    );
+  };
+
   // Paginated Pages Layout (/page2/, /page3/, etc.)
   if (currentPageNum > 1) {
     return (
       <div className="space-y-12 pb-16 pt-6">
+        {renderSlotsForPlacement('below_navigation')}
         {/* Post Grid */}
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -209,6 +316,9 @@ export const HomepageView: React.FC<Props> = ({
               )}
             </div>
           )}
+          {renderSlotsForPlacement('below_pagination')}
+          {renderSlotsForPlacement('before_community')}
+          {renderSharedBottomSlot()}
         </div>
       </div>
     );
@@ -216,10 +326,13 @@ export const HomepageView: React.FC<Props> = ({
 
   return (
     <div className="space-y-16 pb-16">
+      {renderSlotsForPlacement('below_navigation')}
+
       {/* 1. Fully Editable Hero Section (Placed Above Featured Post Section) */}
       {heroConfig && heroConfig.enabled && (
         <HeroSection config={heroConfig} onNavigate={onNavigate} />
       )}
+      {renderSlotsForPlacement('below_hero')}
 
       {sortedSections.map((section) => {
         if (!section.enabled) return null;
@@ -360,7 +473,9 @@ export const HomepageView: React.FC<Props> = ({
 
           case 'featured-grid':
             return (
-              <section key={section.id} className="space-y-6">
+              <React.Fragment key={section.id}>
+                {renderSlotsForPlacement('before_articles')}
+                <section className="space-y-6">
                 <div>
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
                     <TrendingUp className="h-4 w-4" />
@@ -427,11 +542,13 @@ export const HomepageView: React.FC<Props> = ({
                   ))}
                 </div>
               </section>
-            );
+            </React.Fragment>
+          );
 
-          case 'latest-posts':
-            return (
-              <section key={section.id} className="space-y-6">
+        case 'latest-posts':
+          return (
+            <React.Fragment key={section.id}>
+              <section className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -555,17 +672,23 @@ export const HomepageView: React.FC<Props> = ({
                     )}
                   </div>
                 )}
+                {renderSlotsForPlacement('below_pagination')}
               </section>
-            );
+              {renderSlotsForPlacement('after_articles')}
+            </React.Fragment>
+          );
 
-          case 'newsletter':
-          case 'cta':
-            return null;
+        case 'newsletter':
+        case 'cta':
+          return null;
 
-          default:
-            return null;
-        }
-      })}
-    </div>
-  );
+        default:
+          return null;
+      }
+    })}
+
+    {renderSlotsForPlacement('before_community')}
+    {renderSharedBottomSlot()}
+  </div>
+);
 };

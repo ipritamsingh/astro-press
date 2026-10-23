@@ -1173,6 +1173,20 @@ export const initialSiteSettings: SiteSettings = {
       },
     ],
   },
+  integrationsSettings: {
+    ga4Enabled: false,
+    ga4MeasurementId: '',
+    ga4AnonymizeIp: true,
+    gscEnabled: false,
+    gscVerificationCode: '',
+    metaPixelEnabled: false,
+    metaPixelId: '',
+    adsenseEnabled: false,
+    adsensePublisherId: '',
+    adsenseAutoAds: false,
+    consentBannerEnabled: false,
+    scripts: [],
+  },
 };
 
 export const initialCommitHistory: GitCommitRecord[] = [

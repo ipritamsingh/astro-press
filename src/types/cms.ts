@@ -464,6 +464,52 @@ export interface SiteSettings {
   communityLinks?: CommunityLink[];
   newsletterSettings?: NewsletterSettings;
   adsSettings?: AdSenseSettings;
+  integrationsSettings?: IntegrationsSettings;
+}
+
+export type ScriptPlacement = 'head' | 'body_start' | 'body_end';
+export type ScriptCategory =
+  | 'analytics'
+  | 'marketing'
+  | 'tag_manager'
+  | 'support_chat'
+  | 'utility'
+  | 'custom';
+
+export interface CustomScriptEntry {
+  id: string;
+  name: string;
+  category: ScriptCategory;
+  placement: ScriptPlacement;
+  enabled: boolean;
+  content: string;
+  providerId?: string;
+  templateType?: 'custom' | 'gtm' | 'clarity' | 'plausible' | 'fathom' | 'crisp';
+  consentRequired?: boolean;
+  description?: string;
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface IntegrationsSettings {
+  ga4Enabled: boolean;
+  ga4MeasurementId: string;
+  ga4AnonymizeIp?: boolean;
+
+  gscEnabled: boolean;
+  gscVerificationCode: string;
+
+  metaPixelEnabled: boolean;
+  metaPixelId: string;
+
+  adsenseEnabled?: boolean;
+  adsensePublisherId?: string;
+  adsenseAutoAds?: boolean;
+
+  consentBannerEnabled?: boolean;
+
+  scripts: CustomScriptEntry[];
 }
 
 export interface FooterSocialLink {

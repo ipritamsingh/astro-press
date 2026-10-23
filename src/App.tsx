@@ -98,6 +98,8 @@ import { ThemeCustomizer } from './components/admin/ThemeCustomizer';
 import { SeoManager } from './components/admin/SeoManager';
 import { SettingsManager } from './components/admin/SettingsManager';
 import { AdsManager } from './components/admin/AdsManager';
+import { IntegrationsScriptsManager } from './components/admin/IntegrationsScriptsManager';
+import { FrontendScriptsManager } from './components/common/FrontendScriptsManager';
 import { BackupRestoreManager } from './components/admin/BackupRestoreManager';
 import { UsersManager } from './components/admin/UsersManager';
 import { UsersAccessManager } from './components/admin/UsersAccessManager';
@@ -991,6 +993,7 @@ export default function App(props: AppProps = {}) {
       {/* ========================================================================= */}
       {mode === 'frontend' && (
         <div className="flex-1 flex flex-col">
+          <FrontendScriptsManager siteSettings={cms.siteSettings} />
           <WebsiteHeader
             themeSettings={cms.themeSettings}
             menus={cms.menus}
@@ -1458,6 +1461,15 @@ export default function App(props: AppProps = {}) {
             <AdsManager
               siteSettings={cms.siteSettings}
               onUpdateSiteSettings={(s) => cms.updateSiteSettings(s)}
+            />
+          )}
+
+          {adminView === 'integrations-scripts' && (
+            <IntegrationsScriptsManager
+              siteSettings={cms.siteSettings}
+              onUpdateSiteSettings={(s) => cms.updateSiteSettings(s)}
+              onNavigateToAds={() => setAdminView('ads-manager')}
+              currentUsername={authState?.currentUser?.username || 'Administrator'}
             />
           )}
 

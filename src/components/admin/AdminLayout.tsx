@@ -37,6 +37,7 @@ import {
   Shield,
   Database,
   DollarSign,
+  Code,
 } from 'lucide-react';
 import { ThemeSettings, DeploymentSettings } from '../../types/cms';
 
@@ -64,7 +65,8 @@ export type AdminView =
   | 'github-deployment'
   | 'tools'
   | 'sveltia-native'
-  | 'ads-manager';
+  | 'ads-manager'
+  | 'integrations-scripts';
 
 interface Props {
   currentView: AdminView;
@@ -128,6 +130,7 @@ export const AdminLayout: React.FC<Props> = ({
     { id: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
     { id: 'backup-restore', label: 'Backup & Restore', icon: <Database className="h-4 w-4 text-teal-400" /> },
     { id: 'ads-manager', label: 'Ads & Monetization', icon: <DollarSign className="h-4 w-4 text-amber-500" /> },
+    { id: 'integrations-scripts', label: 'Integrations & Scripts', icon: <Code className="h-4 w-4 text-indigo-400" /> },
     { id: 'github-deployment', label: 'GitHub & Deployment', icon: <GitBranch className="h-4 w-4" /> },
     { id: 'tools', label: 'Tools & Astro Export', icon: <Wrench className="h-4 w-4" /> },
     { id: 'sveltia-native', label: 'Native Sveltia CMS', icon: <Code2 className="h-4 w-4" /> },

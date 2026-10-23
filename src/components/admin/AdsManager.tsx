@@ -411,6 +411,13 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
     const updatedSiteSettings: SiteSettings = {
       ...siteSettings,
       adsSettings: updatedAdsSettings,
+      integrationsSettings: siteSettings.integrationsSettings
+        ? {
+            ...siteSettings.integrationsSettings,
+            adsenseEnabled: currentAdsEnabled,
+            adsensePublisherId: currentPublisherId.trim(),
+          }
+        : siteSettings.integrationsSettings,
     };
 
     onUpdateSiteSettings(updatedSiteSettings);

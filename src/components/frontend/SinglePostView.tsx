@@ -1,7 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Post, Comment, Author, Category } from '../../types/cms';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  Post,
+  Comment,
+  Author,
+  Category,
+  SiteSettings,
+  DynamicAdSlot,
+  ArticleAdPlacement,
+} from '../../types/cms';
 import { GutenbergBlockRenderer, parseMarkdownToBlocks } from '../common/GutenbergBlockRenderer';
 import { getPersistedMediaBlob } from '../../data/mediaStorage';
+import { AdUnitWidget } from '../common/AdUnitWidget';
 import {
   Clock,
   User,
@@ -32,6 +41,7 @@ interface Props {
   onAddComment: (comment: Comment) => void;
   onSelectAuthor?: (author: Author) => void;
   siteUrl?: string;
+  siteSettings?: SiteSettings;
 }
 
 export const SinglePostView: React.FC<Props> = ({
@@ -45,6 +55,7 @@ export const SinglePostView: React.FC<Props> = ({
   onAddComment,
   onSelectAuthor,
   siteUrl = 'https://astro-press.pages.dev',
+  siteSettings,
 }) => {
   const [commentName, setCommentName] = useState('');
   const [commentEmail, setCommentEmail] = useState('');
@@ -260,6 +271,119 @@ export const SinglePostView: React.FC<Props> = ({
   const telegramShareUrl = `https://t.me/share/url?url=${shareUrlEncoded}&text=${shareTitleEncoded}`;
   const redditShareUrl = `https://www.reddit.com/submit?url=${shareUrlEncoded}&title=${shareTitleEncoded}`;
   const emailShareUrl = `mailto:?subject=${shareTitleEncoded}&body=${encodeURIComponent(`Check out this article on AstroPress: "${post.title}"\n\n${articleUrl}`)}`;
+
+  const ads = siteSettings?.adsSettings;
+  const adsEnabled = Boolean(ads?.adsEnabled && ads?.publisherId);
+  const publisherId = ads?.publisherId || '';
+
+  const articleSlots: DynamicAdSlot[] = useMemo(() => {
+    if (!ads) return [];
+    if (Array.isArray(ads.articleSlots)) {
+      return ads.articleSlots.filter((s) => s.enabled && s.adUnitId).sort((a, b) => a.order - b.order);
+    }
+    const list: DynamicAdSlot[] = [];
+    if (ads.postSlot1?.enabled && ads.postSlot1?.adUnitId) {
+      list.push({
+        id: ads.postSlot1.id || 'post-slot-1',
+        name: ads.postSlot1.name || 'Post Slot 1',
+        enabled: true,
+        adUnitId: ads.postSlot1.adUnitId,
+        placement: ads.postSlot1.placement || 'after_title',
+        deviceVisibility: ads.postSlot1.deviceVisibility || 'all',
+        format: ads.postSlot1.format || 'auto',
+        order: ads.postSlot1.order ?? 1,
+      });
+    }
+    if (ads.postSlot2?.enabled && ads.postSlot2?.adUnitId) {
+      list.push({
+        id: ads.postSlot2.id || 'post-slot-2',
+        name: ads.postSlot2.name || 'Post Slot 2',
+        enabled: true,
+        adUnitId: ads.postSlot2.adUnitId,
+        placement: ads.postSlot2.placement || 'in_content',
+        contentParagraphIndex: ads.postSlot2.contentParagraphIndex ?? 2,
+        deviceVisibility: ads.postSlot2.deviceVisibility || 'all',
+        format: ads.postSlot2.format || 'auto',
+        order: ads.postSlot2.order ?? 2,
+      });
+    }
+    if (ads.postSlot3?.enabled && ads.postSlot3?.adUnitId) {
+      list.push({
+        id: ads.postSlot3.id || 'post-slot-3',
+        name: ads.postSlot3.name || 'Post Slot 3',
+        enabled: true,
+        adUnitId: ads.postSlot3.adUnitId,
+        placement: ads.postSlot3.placement || 'before_related',
+        deviceVisibility: ads.postSlot3.deviceVisibility || 'all',
+        format: ads.postSlot3.format || 'auto',
+        order: ads.postSlot3.order ?? 3,
+      });
+    }
+    return list.sort((a, b) => a.order - b.order);
+  }, [ads]);
+
+  const renderedSlotIds = new Set<string>();
+  const renderedUnitIds = new Set<string>();
+
+  const renderSlotsForPlacement = (placement: ArticleAdPlacement) => {
+    if (!adsEnabled) return null;
+    const matchingSlots = articleSlots.filter(
+      (s) => s.placement === placement && !renderedSlotIds.has(s.id) && (!s.adUnitId || !renderedUnitIds.has(s.adUnitId))
+    );
+    if (matchingSlots.length === 0) return null;
+
+    return (
+      <div className="w-full my-6">
+        {matchingSlots.map((slot) => {
+          renderedSlotIds.add(slot.id);
+          if (slot.adUnitId) renderedUnitIds.add(slot.adUnitId);
+          return (
+            <AdUnitWidget
+              key={slot.id}
+              adsEnabled={adsEnabled}
+              publisherId={publisherId}
+              adUnitId={slot.adUnitId}
+              slotName={slot.name}
+              format={slot.format}
+              deviceVisibility={slot.deviceVisibility}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderSharedBottomSlot = () => {
+    if (!adsEnabled || !ads?.sharedBottomSlot?.enabled || !ads.sharedBottomSlot.showOnArticles || !ads.sharedBottomSlot.adUnitId) {
+      return null;
+    }
+    const sharedId = ads.sharedBottomSlot.id || 'shared-bottom-slot';
+    const sharedUnitId = ads.sharedBottomSlot.adUnitId;
+    if (renderedSlotIds.has(sharedId) || (sharedUnitId && renderedUnitIds.has(sharedUnitId))) {
+      return null;
+    }
+    renderedSlotIds.add(sharedId);
+    if (sharedUnitId) renderedUnitIds.add(sharedUnitId);
+    return (
+      <div className="w-full my-8">
+        <AdUnitWidget
+          adsEnabled={adsEnabled}
+          publisherId={publisherId}
+          adUnitId={ads.sharedBottomSlot.adUnitId}
+          slotName="Shared Bottom Ad"
+          format={ads.sharedBottomSlot.format}
+          deviceVisibility={ads.sharedBottomSlot.deviceVisibility}
+        />
+      </div>
+    );
+  };
+
+  const inContentSlot = articleSlots.find((s) => s.placement === 'in_content');
+  const splitIdx = inContentSlot && activeBlocks.length > 1
+    ? Math.min(Math.max(1, inContentSlot.contentParagraphIndex ?? 2), activeBlocks.length - 1)
+    : 0;
+  const blocksBefore = splitIdx > 0 ? activeBlocks.slice(0, splitIdx) : activeBlocks;
+  const blocksAfter = splitIdx > 0 ? activeBlocks.slice(splitIdx) : [];
 
   return (
     <article className="max-w-4xl mx-auto py-8 px-4 sm:px-6 font-sans">
@@ -496,6 +620,8 @@ export const SinglePostView: React.FC<Props> = ({
         </div>
       </header>
 
+      {renderSlotsForPlacement('after_title')}
+
       {/* Featured Cover Image */}
       {post.featuredImage && (
         <div className="my-8 rounded-2xl overflow-hidden bg-slate-100 shadow-md border border-slate-200">
@@ -513,10 +639,22 @@ export const SinglePostView: React.FC<Props> = ({
         </div>
       )}
 
+      {renderSlotsForPlacement('after_featured_image')}
+
       {/* Body Content & Rendered Gutenberg Blocks */}
-      <div className="py-6">
-        <GutenbergBlockRenderer blocks={post.blocks} rawMarkdown={post.body} />
+      <div className="py-6 space-y-6">
+        {splitIdx > 0 ? (
+          <>
+            <GutenbergBlockRenderer blocks={blocksBefore} />
+            {renderSlotsForPlacement('in_content')}
+            <GutenbergBlockRenderer blocks={blocksAfter} />
+          </>
+        ) : (
+          <GutenbergBlockRenderer blocks={activeBlocks} />
+        )}
       </div>
+
+      {renderSlotsForPlacement('after_body')}
 
       {/* Tags Section */}
       {post.tags && post.tags.length > 0 && (
@@ -709,6 +847,8 @@ export const SinglePostView: React.FC<Props> = ({
         </div>
       </section>
 
+      {renderSlotsForPlacement('before_related')}
+
       {/* Related Articles */}
       {relatedPosts.length > 0 && (
         <section className="my-12 pt-8 border-t border-slate-200 space-y-4">
@@ -732,6 +872,8 @@ export const SinglePostView: React.FC<Props> = ({
           </div>
         </section>
       )}
+
+      {renderSharedBottomSlot()}
     </article>
   );
 };
