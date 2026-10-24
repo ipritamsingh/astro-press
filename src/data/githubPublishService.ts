@@ -132,8 +132,18 @@ export async function checkGitHubConnection(
   workerProxyUrl?: string
 ): Promise<ConnectionStatus> {
   const start = Date.now();
-  const cleanOwner = owner.trim();
-  const cleanRepo = repoName.trim();
+  let cleanOwner = owner.trim();
+  let cleanRepo = repoName.trim();
+  if (cleanOwner.includes('/')) {
+    const parts = cleanOwner.split('/');
+    cleanOwner = parts[0].trim();
+    if (!cleanRepo && parts[1]) cleanRepo = parts[1].trim();
+  }
+  if (cleanRepo.includes('/')) {
+    const parts = cleanRepo.split('/');
+    cleanOwner = parts[0].trim();
+    cleanRepo = parts[1].trim();
+  }
   const fullRepo = `${cleanOwner}/${cleanRepo}`;
 
   if (!cleanOwner || !cleanRepo) {
@@ -179,7 +189,8 @@ export async function checkGitHubConnection(
   }
 
   // Server-side execution logic
-  const cleanToken = token?.trim();
+  const rawToken = token?.trim() || '';
+  const cleanToken = rawToken.replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
   const hasProxy = workerProxyUrl && workerProxyUrl.trim() && !isAuthenticatorWorkerUrl(workerProxyUrl);
 
   const directUrl = `https://api.github.com/repos/${cleanOwner}/${cleanRepo}`;
@@ -187,6 +198,7 @@ export async function checkGitHubConnection(
 
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'AstroPress-CMS/1.0',
   };
 
   if (cleanToken) {
@@ -275,7 +287,14 @@ export async function checkGitHubConnection(
   }
 
   if (response.status === 403) {
-    const body = await response.json().catch(() => ({}));
+    let body: any = {};
+    let rawText = '';
+    try {
+      rawText = await response.text();
+      body = JSON.parse(rawText);
+    } catch {
+      body = { message: rawText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() };
+    }
     const remaining = response.headers.get('x-ratelimit-remaining');
     const resetHeader = response.headers.get('x-ratelimit-reset');
     const retryAfter = response.headers.get('retry-after');
@@ -487,10 +506,13 @@ export async function executeAtomicBulkDeploy(payload: FullPushPayload): Promise
 
 async function performAtomicBulkDeploy(payload: FullPushPayload) {
   const { deploymentSettings, sessionToken, onProgress, customCommitMessage } = payload;
-  const branch = deploymentSettings.githubBranch || 'main';
-  const repoString = deploymentSettings.githubRepo || 'ipritamsingh/astro-press';
-  const [owner, repoName] = repoString.split('/');
-  const token = (sessionToken || deploymentSettings.githubToken || '').trim();
+  const branch = (deploymentSettings.githubBranch || 'main').trim();
+  const repoString = (deploymentSettings.githubRepo || 'ipritamsingh/astro-press').trim();
+  const parts = repoString.split('/');
+  const owner = parts[0]?.trim() || '';
+  const repoName = parts[1]?.trim() || '';
+  const rawToken = (sessionToken || deploymentSettings.githubToken || '').trim();
+  const token = rawToken.replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
 
   if (!token || !owner || !repoName) {
     return {
@@ -514,6 +536,7 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
+    'User-Agent': 'AstroPress-CMS/1.0',
   };
 
   if (onProgress) {
@@ -526,13 +549,22 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
   try {
     const refRes = await fetch(`${baseApiUrl}/git/ref/heads/${branch}`, { method: 'GET', headers });
     if (!refRes.ok) {
-      const err = await refRes.json().catch(() => ({}));
+      let errMsg = refRes.statusText;
+      try {
+        const errText = await refRes.text();
+        try {
+          const errJson = JSON.parse(errText);
+          errMsg = errJson.message || errMsg;
+        } catch {
+          errMsg = errText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || errMsg;
+        }
+      } catch {}
       return {
         success: false,
         totalPushed: 0,
         totalFiles: 0,
-        failedFiles: [{ path: 'branch', error: err.message || refRes.statusText }],
-        message: `Could not reach branch "${branch}" on ${owner}/${repoName}: ${err.message || refRes.statusText}`,
+        failedFiles: [{ path: 'branch', error: errMsg }],
+        message: `Could not reach branch "${branch}" on ${owner}/${repoName} (${refRes.status}): ${errMsg}`,
       };
     }
     const refData = await refRes.json();

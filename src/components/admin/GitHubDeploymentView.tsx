@@ -207,7 +207,6 @@ export const GitHubDeploymentView: React.FC<Props> = ({
         media,
         menus,
         deploymentSettings: settings,
-        sessionToken: activeToken,
         onProgress: (info) => {
           setPushProgress(info);
         },

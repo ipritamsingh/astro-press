@@ -175,9 +175,10 @@ export async function fetchRemoteCMSDataFromGitHub(
 
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'AstroPress-CMS/1.0',
   };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token.replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim()}`;
   }
 
   try {

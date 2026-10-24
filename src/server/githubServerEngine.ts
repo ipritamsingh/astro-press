@@ -111,7 +111,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     // 2. Retrieve GITHUB_PAT from Server-Side Environment Secret
-    const pat = env.GITHUB_PAT ? env.GITHUB_PAT.trim() : '';
+    const rawPat = env.GITHUB_PAT ? env.GITHUB_PAT.trim() : '';
+    const pat = rawPat.replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
     if (!pat) {
       return jsonResponse(
         {
@@ -128,8 +129,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // ------------------------------------------------------------------------
     if (action === 'test-connection') {
       const body = (await request.json().catch(() => ({}))) as any;
-      const owner = (body.owner || '').trim();
-      const repoName = (body.repoName || '').trim();
+      let owner = (body.owner || '').trim();
+      let repoName = (body.repoName || '').trim();
+      if (owner.includes('/')) {
+        const parts = owner.split('/');
+        owner = parts[0].trim();
+        if (!repoName && parts[1]) repoName = parts[1].trim();
+      }
+      if (repoName.includes('/')) {
+        const parts = repoName.split('/');
+        owner = parts[0].trim();
+        repoName = parts[1].trim();
+      }
       const branch = (body.branch || 'main').trim();
       const workerUrl = (body.workerUrl || '').trim();
 
@@ -160,9 +171,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return jsonResponse({ success: false, error: 'Deployment settings are required.' }, 400);
       }
 
+      let repoString = (deploymentSettings.githubRepo || '').trim();
+      if (repoString.includes('/')) {
+        const parts = repoString.split('/');
+        if (parts.length > 2) {
+          repoString = `${parts[0].trim()}/${parts[1].trim()}`;
+        }
+      }
+
       // Inject server-side GITHUB_PAT securely into deployment settings
       const secureSettings = {
         ...deploymentSettings,
+        githubRepo: repoString || deploymentSettings.githubRepo,
         githubToken: pat,
       };
 
