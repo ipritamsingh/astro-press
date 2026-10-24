@@ -12,6 +12,7 @@ import {
   MediaItem,
   Menu,
 } from '../types/cms';
+import * as yaml from 'js-yaml';
 import { projectFilesManifest } from './projectFilesManifest';
 import { getAllPersistedMediaBlobs } from './mediaStorage';
 import {
@@ -360,42 +361,48 @@ export async function calculateGitBlobSha(content: string): Promise<string> {
 }
 
 function formatPostToMarkdown(post: Post): string {
-  return `---
-title: "${(post.title || '').replace(/"/g, '\\"')}"
-slug: "${post.slug}"
-pubDate: ${post.pubDate || new Date().toISOString()}
-status: "${post.status || 'published'}"
-draft: ${post.status === 'draft'}
-author: "${(post.author || 'Amit Singh').replace(/"/g, '\\"')}"
-category: "${(post.category || 'General').replace(/"/g, '\\"')}"
-tags: [${(post.tags || []).map((t) => `"${t}"`).join(', ')}]
-featuredImage: "${post.featuredImage || ''}"
-excerpt: "${(post.excerpt || '').replace(/"/g, '\\"')}"
-readingTime: ${post.readingTime || Math.max(1, Math.ceil((post.blocks || []).length * 0.8))}
-template: "${post.template || 'standard'}"
-blocks: ${JSON.stringify(post.blocks || [])}
-seo:
-  metaTitle: "${(post.seo?.metaTitle || post.title || '').replace(/"/g, '\\"')}"
-  metaDescription: "${(post.seo?.metaDescription || post.excerpt || '').replace(/"/g, '\\"')}"
-  focusKeyword: "${post.seo?.focusKeyword || ''}"
-  robotsIndex: ${post.seo?.robotsIndex !== false}
-  robotsFollow: ${post.seo?.robotsFollow !== false}
----
-
-${post.body || ''}`;
+  const postFm = {
+    title: post.title || '',
+    slug: post.slug || '',
+    pubDate: post.pubDate || new Date().toISOString(),
+    status: post.status || 'published',
+    draft: post.status === 'draft',
+    author: post.author || 'Amit Singh',
+    category: post.category || 'General',
+    tags: post.tags || [],
+    featuredImage: post.featuredImage || '',
+    excerpt: post.excerpt || '',
+    readingTime: post.readingTime || Math.max(1, Math.ceil((post.blocks || []).length * 0.8)),
+    template: post.template || 'standard',
+    blocks: post.blocks || [],
+    seo: {
+      metaTitle: post.seo?.metaTitle || post.title || '',
+      metaDescription: post.seo?.metaDescription || post.excerpt || '',
+      focusKeyword: post.seo?.focusKeyword || '',
+      robotsIndex: post.seo?.robotsIndex !== false,
+      robotsFollow: post.seo?.robotsFollow !== false,
+    },
+  };
+  return `---\n${yaml.dump(postFm, { lineWidth: -1, noRefs: true }).trim()}\n---\n\n${post.body || ''}`;
 }
 
 function formatPageToMarkdown(page: Page): string {
-  return `---
-title: "${(page.title || '').replace(/"/g, '\\"')}"
-slug: "${page.slug}"
-pubDate: ${new Date().toISOString()}
-template: "${page.template || 'default'}"
-draft: ${page.status === 'draft'}
-blocks: ${JSON.stringify(page.blocks || [])}
----
-
-${page.body || ''}`;
+  const pageFm = {
+    title: page.title || '',
+    slug: page.slug || '',
+    pubDate: page.pubDate || new Date().toISOString(),
+    template: page.template || 'default',
+    draft: page.status === 'draft',
+    blocks: page.blocks || [],
+    seo: page.seo ? {
+      metaTitle: page.seo.metaTitle || page.title || '',
+      metaDescription: page.seo.metaDescription || '',
+      focusKeyword: page.seo.focusKeyword || '',
+      robotsIndex: page.seo.robotsIndex !== false,
+      robotsFollow: page.seo.robotsFollow !== false,
+    } : undefined,
+  };
+  return `---\n${yaml.dump(pageFm, { lineWidth: -1, noRefs: true }).trim()}\n---\n\n${page.body || ''}`;
 }
 
 // In-flight deployment lock to prevent concurrent or duplicate pushes

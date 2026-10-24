@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as yaml from 'js-yaml';
 import { Post, Page, GutenbergBlock, BlockType, PostSEO, MediaItem, DeploymentSettings } from '../../types/cms';
 import { GutenbergBlockRenderer } from '../common/GutenbergBlockRenderer';
 import { processUploadedFile, getPersistedMediaBlob } from '../../data/mediaStorage';
@@ -840,41 +841,47 @@ export const GutenbergEditor: React.FC<Props> = ({
     const cleanDate = (initialItem as Post).pubDate || new Date().toISOString();
 
     if (isPage) {
-      return `---
-title: "${title.replace(/"/g, '\\"')}"
-slug: "${cleanSlug}"
-pubDate: ${cleanDate}
-template: "${(initialItem as Page).template || 'default'}"
-draft: ${activeStatus === 'draft'}
-blocks: ${JSON.stringify(blocks || [])}
----
-
-${compileBlocksToMarkdown()}`;
+      const pageFm = {
+        title: title.trim(),
+        slug: cleanSlug,
+        pubDate: cleanDate,
+        template: (initialItem as Page).template || 'default',
+        draft: activeStatus === 'draft',
+        blocks: blocks || [],
+        seo: seo ? {
+          metaTitle: seo.metaTitle || title.trim(),
+          metaDescription: seo.metaDescription || '',
+          focusKeyword: seo.focusKeyword || '',
+          robotsIndex: seo.robotsIndex !== false,
+          robotsFollow: seo.robotsFollow !== false,
+        } : undefined,
+      };
+      return `---\n${yaml.dump(pageFm, { lineWidth: -1, noRefs: true }).trim()}\n---\n\n${compileBlocksToMarkdown()}`;
     }
 
-    return `---
-title: "${title.replace(/"/g, '\\"')}"
-slug: "${cleanSlug}"
-pubDate: ${cleanDate}
-status: "${activeStatus}"
-draft: ${activeStatus === 'draft'}
-author: "${author}"
-category: "${category}"
-tags: [${selectedTags.map((t) => `"${t}"`).join(', ')}]
-featuredImage: "${featuredImage}"
-excerpt: "${excerpt.replace(/"/g, '\\"')}"
-readingTime: ${Math.max(1, Math.ceil(blocks.length * 0.8))}
-template: "${template}"
-blocks: ${JSON.stringify(blocks || [])}
-seo:
-  metaTitle: "${seo.metaTitle.replace(/"/g, '\\"')}"
-  metaDescription: "${seo.metaDescription.replace(/"/g, '\\"')}"
-  focusKeyword: "${seo.focusKeyword}"
-  robotsIndex: ${seo.robotsIndex}
-  robotsFollow: ${seo.robotsFollow}
----
-
-${compileBlocksToMarkdown()}`;
+    const postFm = {
+      title: title.trim(),
+      slug: cleanSlug,
+      pubDate: cleanDate,
+      status: activeStatus,
+      draft: activeStatus === 'draft',
+      author: author || 'Amit Singh',
+      category: category || 'General',
+      tags: selectedTags || [],
+      featuredImage: featuredImage || '',
+      excerpt: excerpt || title.trim(),
+      readingTime: Math.max(1, Math.ceil(blocks.length * 0.8)),
+      template: template || 'standard',
+      blocks: blocks || [],
+      seo: {
+        metaTitle: seo?.metaTitle || title.trim(),
+        metaDescription: seo?.metaDescription || excerpt || title.trim(),
+        focusKeyword: seo?.focusKeyword || '',
+        robotsIndex: seo?.robotsIndex !== false,
+        robotsFollow: seo?.robotsFollow !== false,
+      },
+    };
+    return `---\n${yaml.dump(postFm, { lineWidth: -1, noRefs: true }).trim()}\n---\n\n${compileBlocksToMarkdown()}`;
   };
 
   const handleSaveDraft = () => {

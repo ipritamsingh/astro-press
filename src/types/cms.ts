@@ -98,6 +98,7 @@ export interface Page {
   slug: string;
   originalSlug?: string;
   filePath?: string;
+  pubDate?: string;
   status: PostStatus;
   template: 'default' | 'full-width' | 'contact' | 'about' | 'landing';
   parent?: string;
@@ -681,4 +682,5 @@ export interface DeploymentSettings {
   cloudflarePagesProject: string;
   productionUrl: string;
   autoDeployOnPublish: boolean;
+  githubToken?: string;
 }
