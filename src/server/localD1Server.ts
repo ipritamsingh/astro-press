@@ -489,11 +489,40 @@ export async function handleLocalApiRequest(req: any, res: any) {
       const body = JSON.parse(rawBody);
       const files: Array<{ path: string; content: string }> = body.files || [];
 
+      const sanitizeMarkdownFrontmatter = (content: string): string => {
+        content = content.replace(
+          /^excerpt:\s*"([\s\S]*?)"(?=\n[a-zA-Z0-9_-]+:|\n---)/m,
+          (match, inner) => {
+            if (inner.includes('\n')) {
+              const lines = inner.split('\n');
+              return 'excerpt: |\n' + lines.map((l: string) => `  ${l}`).join('\n');
+            }
+            return match;
+          }
+        );
+        content = content.replace(
+          /^(\s*)metaDescription:\s*"([\s\S]*?)"(?=\n\s*[a-zA-Z0-9_-]+:|\n---)/m,
+          (match, indent, inner) => {
+            if (inner.includes('\n')) {
+              const lines = inner.split('\n');
+              return indent + 'metaDescription: |\n' + lines.map((l: string) => `${indent}  ${l}`).join('\n');
+            }
+            return match;
+          }
+        );
+        return content;
+      };
+
       let updatedCount = 0;
       for (const file of files) {
         if (!file.path || typeof file.content !== 'string') continue;
         const targetPath = path.join(rootDir, file.path);
         const targetDir = path.dirname(targetPath);
+
+        let finalContent = file.content;
+        if (file.path.endsWith('.md')) {
+          finalContent = sanitizeMarkdownFrontmatter(finalContent);
+        }
 
         let existingContent = '';
         if (fs.existsSync(targetPath)) {
@@ -503,11 +532,11 @@ export async function handleLocalApiRequest(req: any, res: any) {
         }
 
         // Only write if content actually changed on disk!
-        if (existingContent !== file.content) {
+        if (existingContent !== finalContent) {
           if (!fs.existsSync(targetDir)) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
-          fs.writeFileSync(targetPath, file.content, 'utf8');
+          fs.writeFileSync(targetPath, finalContent, 'utf8');
           updatedCount++;
         }
       }

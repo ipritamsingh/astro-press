@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 const distDir = path.resolve(__dirname, '..', 'dist');
+const astroCacheDir = path.resolve(__dirname, '..', '.astro');
 
 try {
   if (fs.existsSync(distDir)) {
@@ -20,7 +21,12 @@ try {
   } else {
     console.log('[clean] No dist/ directory to remove.');
   }
+
+  if (fs.existsSync(astroCacheDir)) {
+    fs.rmSync(astroCacheDir, { recursive: true, force: true });
+    console.log('[clean] Removed stale .astro cache directory.');
+  }
 } catch (err) {
-  console.error('[clean] Failed to remove dist/:', err && err.message);
+  console.error('[clean] Failed to clean build artifacts:', err && err.message);
   process.exit(1);
 }
