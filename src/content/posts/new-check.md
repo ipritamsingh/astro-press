@@ -1,5 +1,5 @@
 ---
-title: "New vheck push"
+title: "New vheck push check update"
 slug: "new-check"
 pubDate: 2026-10-06T12:23:24.386Z
 status: "published"
