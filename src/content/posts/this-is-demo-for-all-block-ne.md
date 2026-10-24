@@ -8,7 +8,7 @@ author: "Amit Singh"
 category: "Technology"
 tags: ["Astro", "Sveltia CMS"]
 featuredImage: "/uploads/1000404269.webp"
-excerpt: "Title of your new story...
+excerpt: "Title of your new story..."
 Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter.
 > “A compelling quote"
 readingTime: 9
