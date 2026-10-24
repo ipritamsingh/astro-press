@@ -104,6 +104,8 @@ import { ToolsExporter } from './components/admin/ToolsExporter';
 import { SveltiaNativeFrame } from './components/admin/SveltiaNativeFrame';
 import { GitHubDeploymentView } from './components/admin/GitHubDeploymentView';
 import { HeroSectionManager } from './components/admin/HeroSectionManager';
+import { AdsManager } from './components/admin/AdsManager';
+import { ScriptsManager } from './components/admin/ScriptsManager';
 import { AccountSecurityManager } from './components/auth/AccountSecurityManager';
 import { InitialAdminSetupView } from './components/auth/InitialAdminSetupView';
 import { AdminLoginView } from './components/auth/AdminLoginView';
@@ -184,12 +186,16 @@ export default function App(props: AppProps = {}) {
     }
     return 'frontend';
   });
-  const [adminView, setAdminView] = useState<AdminView>(() => {
+  const [adminView, setAdminView] = useState<AdminView>('dashboard');
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('astropress_admin_view') as AdminView) || 'dashboard';
+      const saved = localStorage.getItem('astropress_admin_view') as AdminView;
+      if (saved) {
+        setAdminView(saved);
+      }
     }
-    return 'dashboard';
-  });
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1522,6 +1528,20 @@ export default function App(props: AppProps = {}) {
               categories={cms.categories}
               tags={cms.tags}
               themeSettings={cms.themeSettings}
+            />
+          )}
+
+          {adminView === 'ads' && (
+            <AdsManager
+              siteSettings={cms.siteSettings}
+              onUpdateSiteSettings={(s) => cms.updateSiteSettings(s)}
+            />
+          )}
+
+          {adminView === 'scripts' && (
+            <ScriptsManager
+              siteSettings={cms.siteSettings}
+              onUpdateSiteSettings={(s) => cms.updateSiteSettings(s)}
             />
           )}
 

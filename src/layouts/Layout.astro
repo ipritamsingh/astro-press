@@ -8,6 +8,15 @@ import '../index.css';
 import siteSettingsJson from '../data/siteSettings.json';
 
 const siteSettings: any = (siteSettingsJson as any) || {};
+const scriptsSettings = siteSettings.scriptsSettings || { integrations: [], consentBanner: { enabled: true, noticeText: '', privacyPolicyUrl: '/privacy-policy/' } };
+const activeIntegrations = (scriptsSettings.integrations || []).filter((i: any) => i.enabled && i.configValue);
+const adsenseIntegration = activeIntegrations.find((i: any) => i.providerKey === 'adsense');
+const ga4Integration = activeIntegrations.find((i: any) => i.providerKey === 'ga4');
+const gtmIntegration = activeIntegrations.find((i: any) => i.providerKey === 'gtm');
+const verificationIntegration = activeIntegrations.find((i: any) => i.providerKey === 'verification');
+const consentEnabled = scriptsSettings.consentBanner?.enabled !== false;
+const consentNotice = scriptsSettings.consentBanner?.noticeText || 'We use cookies and similar technologies to enhance your experience, analyze site traffic, and serve personalized advertisements.';
+const privacyUrl = scriptsSettings.consentBanner?.privacyPolicyUrl || '/privacy-policy/';
 
 interface Props {
   title?: string;
@@ -315,8 +324,75 @@ const defaultSchemaGraph = schemaData || {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <script type="application/ld+json" id="astropress-schema" set:html={JSON.stringify(defaultSchemaGraph, null, 2)} />
+    {adsenseIntegration && (
+      <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseIntegration.configValue}`} crossorigin="anonymous"></script>
+    )}
+    {ga4Integration && (
+      <>
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${ga4Integration.configValue}`}></script>
+        <script is:inline define:vars={{ gaId: ga4Integration.configValue }}>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gaId);
+        </script>
+      </>
+    )}
+    {gtmIntegration && (
+      <script is:inline define:vars={{ gtmId: gtmIntegration.configValue }}>
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='gtm.src'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer',gtmId);
+      </script>
+    )}
+    {verificationIntegration && (
+      <meta name="google-site-verification" content={verificationIntegration.configValue.replace('google-site-verification=', '')} />
+    )}
   </head>
   <body class="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans" style={bodyStyle}>
     <slot />
+    {consentEnabled && (
+      <div id="astropress-consent-banner" class="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md text-white p-4 shadow-2xl border-t border-slate-800 hidden">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p class="text-xs text-slate-300 leading-relaxed">
+            {consentNotice} <a href={privacyUrl} class="underline text-blue-400 hover:text-blue-300">Privacy Policy</a>
+          </p>
+          <div class="flex items-center gap-3 shrink-0">
+            <button type="button" id="astropress-consent-accept" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors cursor-pointer">
+              Accept All
+            </button>
+            <button type="button" id="astropress-consent-decline" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors cursor-pointer">
+              Essential Only
+            </button>
+          </div>
+        </div>
+      </div>
+      <script is:inline>
+        document.addEventListener('DOMContentLoaded', function() {
+          if (!localStorage.getItem('astropress_cookie_consent')) {
+            var banner = document.getElementById('astropress-consent-banner');
+            if (banner) banner.classList.remove('hidden');
+          }
+          var acceptBtn = document.getElementById('astropress-consent-accept');
+          if (acceptBtn) {
+            acceptBtn.addEventListener('click', function() {
+              localStorage.setItem('astropress_cookie_consent', 'accepted');
+              var banner = document.getElementById('astropress-consent-banner');
+              if (banner) banner.classList.add('hidden');
+            });
+          }
+          var declineBtn = document.getElementById('astropress-consent-decline');
+          if (declineBtn) {
+            declineBtn.addEventListener('click', function() {
+              localStorage.setItem('astropress_cookie_consent', 'essential');
+              var banner = document.getElementById('astropress-consent-banner');
+              if (banner) banner.classList.add('hidden');
+            });
+          }
+        });
+      </script>
+    )}
   </body>
 </html>

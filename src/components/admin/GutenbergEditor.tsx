@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as yaml from 'js-yaml';
 import { Post, Page, GutenbergBlock, BlockType, PostSEO, MediaItem } from '../../types/cms';
 import { GutenbergBlockRenderer } from '../common/GutenbergBlockRenderer';
 import { processUploadedFile, getPersistedMediaBlob } from '../../data/mediaStorage';
@@ -840,42 +841,45 @@ export const GutenbergEditor: React.FC<Props> = ({
     const cleanSlug = slug || originalSlug || generateSlug(title);
     const cleanDate = (initialItem as Post).pubDate || new Date().toISOString();
 
-    if (isPage) {
-      return `---
-title: "${title.replace(/"/g, '\\"')}"
-slug: "${cleanSlug}"
-pubDate: ${cleanDate}
-template: "${(initialItem as Page).template || 'default'}"
-draft: ${activeStatus === 'draft'}
-blocks: ${JSON.stringify(blocks || [])}
----
+    const frontmatterObj: any = isPage
+      ? {
+          title: title.trim(),
+          slug: cleanSlug,
+          pubDate: cleanDate,
+          template: (initialItem as Page).template || 'default',
+          draft: activeStatus === 'draft',
+          blocks: blocks || [],
+        }
+      : {
+          title: title.trim(),
+          slug: cleanSlug,
+          pubDate: cleanDate,
+          status: activeStatus,
+          draft: activeStatus === 'draft',
+          author: author || 'Admin',
+          category: category || 'Technology',
+          tags: selectedTags || [],
+          featuredImage: featuredImage || '',
+          excerpt: excerpt || title.trim(),
+          readingTime: Math.max(1, Math.ceil(blocks.length * 0.8)),
+          template: template || 'standard',
+          blocks: blocks || [],
+          seo: {
+            metaTitle: seo.metaTitle || title.trim(),
+            metaDescription: seo.metaDescription || '',
+            focusKeyword: seo.focusKeyword || '',
+            robotsIndex: seo.robotsIndex ?? true,
+            robotsFollow: seo.robotsFollow ?? true,
+          },
+        };
 
-${compileBlocksToMarkdown()}`;
-    }
+    const yamlStr = yaml.dump(frontmatterObj, {
+      lineWidth: -1,
+      noRefs: true,
+      sortKeys: false,
+    });
 
-    return `---
-title: "${title.replace(/"/g, '\\"')}"
-slug: "${cleanSlug}"
-pubDate: ${cleanDate}
-status: "${activeStatus}"
-draft: ${activeStatus === 'draft'}
-author: "${author}"
-category: "${category}"
-tags: [${selectedTags.map((t) => `"${t}"`).join(', ')}]
-featuredImage: "${featuredImage}"
-excerpt: "${excerpt.replace(/"/g, '\\"')}"
-readingTime: ${Math.max(1, Math.ceil(blocks.length * 0.8))}
-template: "${template}"
-blocks: ${JSON.stringify(blocks || [])}
-seo:
-  metaTitle: "${seo.metaTitle.replace(/"/g, '\\"')}"
-  metaDescription: "${seo.metaDescription.replace(/"/g, '\\"')}"
-  focusKeyword: "${seo.focusKeyword}"
-  robotsIndex: ${seo.robotsIndex}
-  robotsFollow: ${seo.robotsFollow}
----
-
-${compileBlocksToMarkdown()}`;
+    return `---\n${yamlStr}---\n\n${compileBlocksToMarkdown()}`;
   };
 
   const handleSaveDraft = () => {

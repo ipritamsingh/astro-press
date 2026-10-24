@@ -373,6 +373,75 @@ export interface SeoSocialProfiles {
   githubUrl?: string;
 }
 
+export interface AdSlot {
+  id: string;
+  name: string;
+  provider: 'adsense' | 'custom_image' | 'third_party';
+  adUnitId: string;
+  format: 'auto' | 'responsive' | 'rectangle' | 'leaderboard' | 'skyscraper' | 'in-article';
+  placement:
+    | 'before_post_title'
+    | 'after_post_title'
+    | 'after_introduction'
+    | 'between_paragraphs'
+    | 'after_sections'
+    | 'before_conclusion'
+    | 'after_content'
+    | 'between_homepage_sections'
+    | 'between_archive_items'
+    | 'sidebar'
+    | 'before_footer'
+    | string;
+  enabled: boolean;
+  deviceVisibility: 'all' | 'desktop' | 'mobile';
+  order: number;
+  contentParagraphIndex?: number;
+  customImage?: {
+    imageUrl: string;
+    destinationUrl: string;
+    altText: string;
+    title?: string;
+  };
+  thirdPartyHtml?: string;
+  targeting: {
+    showOnHomepage: boolean;
+    showOnPosts: boolean;
+    showOnPages: boolean;
+    showOnCategories: boolean;
+    showOnAuthors: boolean;
+    includedSlugs?: string[];
+    excludedSlugs?: string[];
+  };
+  notes?: string;
+}
+
+export interface ScriptIntegration {
+  id: string;
+  name: string;
+  providerKey: 'adsense' | 'ga4' | 'gtm' | 'metaPixel' | 'verification' | 'customHead' | 'bodyStart' | 'bodyEnd';
+  enabled: boolean;
+  configValue: string;
+  placement: 'head' | 'body-start' | 'body-end';
+  consentCategory: 'necessary' | 'analytics' | 'advertising' | 'functional';
+  notes?: string;
+}
+
+export interface AdsSettings {
+  adsEnabled: boolean;
+  publisherId: string;
+  autoAdsEnabled: boolean;
+  slots: AdSlot[];
+}
+
+export interface ScriptsSettings {
+  integrations: ScriptIntegration[];
+  consentBanner: {
+    enabled: boolean;
+    noticeText: string;
+    privacyPolicyUrl: string;
+  };
+}
+
 export interface SiteSettings {
   siteTitle: string;
   siteTagline: string;
@@ -406,6 +475,8 @@ export interface SiteSettings {
   communityCtaSubtitle?: string;
   communityLinks?: CommunityLink[];
   newsletterSettings?: NewsletterSettings;
+  adsSettings?: AdsSettings;
+  scriptsSettings?: ScriptsSettings;
 }
 
 export interface FooterSocialLink {
