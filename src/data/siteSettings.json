@@ -3,8 +3,8 @@
   "siteTagline": "WordPress Editorial Ergonomics with Astro Performance",
   "siteDescription": "Production-ready headless CMS builder combining Sveltia CMS, Astro frontend architecture, Gutenberg-style block editor, theme customizer, GitHub backend, and Cloudflare Pages deployment.",
   "siteUrl": "https://astropress.pages.dev",
-  "logoUrl": "",
-  "faviconUrl": "",
+  "logoUrl": "/uploads/1000405169.webp",
+  "faviconUrl": "/uploads/1000405169.webp",
   "defaultOgImage": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80",
   "seoSocialProfiles": {
     "twitterHandle": "@astropress",
@@ -108,7 +108,62 @@
       "adUnitId": "",
       "deviceVisibility": "all",
       "format": "auto"
-    }
+    },
+    "homeSlots": [
+      {
+        "id": "home-slot-1",
+        "name": "Homepage Slot 1",
+        "enabled": false,
+        "adUnitId": "",
+        "placement": "below_hero",
+        "deviceVisibility": "all",
+        "format": "auto",
+        "order": 1
+      },
+      {
+        "id": "home-slot-2",
+        "name": "Homepage Slot 2",
+        "enabled": false,
+        "adUnitId": "",
+        "placement": "below_pagination",
+        "deviceVisibility": "all",
+        "format": "auto",
+        "order": 2
+      }
+    ],
+    "articleSlots": [
+      {
+        "id": "post-slot-1",
+        "name": "Post Slot 1",
+        "enabled": false,
+        "adUnitId": "",
+        "placement": "after_title",
+        "deviceVisibility": "all",
+        "format": "auto",
+        "order": 1
+      },
+      {
+        "id": "post-slot-2",
+        "name": "Post Slot 2",
+        "enabled": false,
+        "adUnitId": "",
+        "placement": "in_content",
+        "contentParagraphIndex": 2,
+        "deviceVisibility": "all",
+        "format": "auto",
+        "order": 2
+      },
+      {
+        "id": "post-slot-3",
+        "name": "Post Slot 3",
+        "enabled": false,
+        "adUnitId": "",
+        "placement": "before_related",
+        "deviceVisibility": "all",
+        "format": "auto",
+        "order": 3
+      }
+    ]
   },
   "integrationsSettings": {
     "ga4Enabled": false,
@@ -123,5 +178,6 @@
     "adsenseAutoAds": false,
     "consentBannerEnabled": false,
     "scripts": []
-  }
+  },
+  "focusKeyword": "Astro Sveltia CMS"
 }
