@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SiteSettings, AdConfiguration, AdDisplayLocation, AdProviderType } from '../../types/cms';
 import { DEFAULT_DEMO_AD_CONFIG, DemoAdBanner } from '../common/DemoAdBanner';
+import { initialSiteSettings } from '../../data/initialData';
 import {
   Megaphone,
   Plus,
@@ -97,36 +98,64 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
     ads: [],
   };
 
+  const initialAdsList: AdConfiguration[] =
+    currentAds.ads && currentAds.ads.length > 0
+      ? currentAds.ads
+      : (initialSiteSettings.adsSettings?.ads || []);
+
   const [adsEnabled, setAdsEnabled] = useState<boolean>(currentAds.adsEnabled !== false);
   const [demoModeEnabled, setDemoModeEnabled] = useState<boolean>(Boolean(currentAds.demoModeEnabled));
-  const [ads, setAds] = useState<AdConfiguration[]>(currentAds.ads || []);
+  const [ads, setAds] = useState<AdConfiguration[]>(initialAdsList);
   
   const [editingAd, setEditingAd] = useState<AdConfiguration | null>(null);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [previewMode, setPreviewMode] = useState<boolean>(false);
 
+  // Sync state if siteSettings from parent updates or loads
+  useEffect(() => {
+    if (siteSettings?.adsSettings?.ads && siteSettings.adsSettings.ads.length > 0) {
+      setAds(siteSettings.adsSettings.ads);
+    }
+    if (siteSettings?.adsSettings?.adsEnabled !== undefined) {
+      setAdsEnabled(siteSettings.adsSettings.adsEnabled !== false);
+    }
+    if (siteSettings?.adsSettings?.demoModeEnabled !== undefined) {
+      setDemoModeEnabled(Boolean(siteSettings.adsSettings.demoModeEnabled));
+    }
+  }, [siteSettings?.adsSettings]);
+
   // Slug input helpers for modal
   const [includedSlugsInput, setIncludedSlugsInput] = useState<string>('');
   const [excludedSlugsInput, setExcludedSlugsInput] = useState<string>('');
 
-  const handleSaveAll = () => {
+  const persistAdsSettings = (
+    updatedAds: AdConfiguration[],
+    newAdsEnabled: boolean = adsEnabled,
+    newDemoMode: boolean = demoModeEnabled
+  ) => {
     onUpdateSiteSettings({
       adsSettings: {
-        adsEnabled,
-        demoModeEnabled,
+        ...currentAds,
+        adsEnabled: newAdsEnabled,
+        demoModeEnabled: newDemoMode,
         publisherId: currentAds.publisherId || '',
         autoAdsEnabled: currentAds.autoAdsEnabled || false,
-        ads,
+        ads: updatedAds,
       },
     });
+  };
+
+  const handleSaveAll = () => {
+    persistAdsSettings(ads, adsEnabled, demoModeEnabled);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
 
   const handleAddNewAd = () => {
+    const uniqueSuffix = Date.now() + '-' + Math.random().toString(36).substring(2, 7);
     const newAd: AdConfiguration = {
-      id: 'ad-' + Date.now(),
+      id: `ad-${uniqueSuffix}`,
       name: 'New Ad Unit',
       provider: 'adsense',
       adCode: '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>\n<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0000000000000000" data-ad-slot="1234567890" data-ad-format="auto" data-full-width-responsive="true"></ins>\n<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>',
@@ -155,23 +184,34 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
   };
 
   const handleDuplicateAd = (ad: AdConfiguration) => {
+    const uniqueSuffix = Date.now() + '-' + Math.random().toString(36).substring(2, 7);
     const duplicated: AdConfiguration = {
       ...ad,
-      id: 'ad-' + Date.now(),
+      id: `ad-${uniqueSuffix}`,
       name: `${ad.name} (Copy)`,
       createdAt: new Date().toISOString(),
     };
-    setAds([...ads, duplicated]);
+    const updatedAds = [...ads, duplicated];
+    setAds(updatedAds);
+    persistAdsSettings(updatedAds, adsEnabled, demoModeEnabled);
   };
 
   const handleDeleteAd = (id: string) => {
-    if (confirm('Are you sure you want to delete this ad?')) {
-      setAds(ads.filter((a) => a.id !== id));
+    if (!id) return;
+    const adToDelete = ads.find((a) => a.id === id);
+    const adName = adToDelete ? `"${adToDelete.name}"` : 'this ad unit';
+    if (confirm(`Are you sure you want to delete ${adName}? This action cannot be undone.`)) {
+      const updatedAds = ads.filter((a) => a.id !== id);
+      setAds(updatedAds);
+      persistAdsSettings(updatedAds, adsEnabled, demoModeEnabled);
     }
   };
 
   const handleToggleAd = (id: string) => {
-    setAds(ads.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)));
+    if (!id) return;
+    const updatedAds = ads.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a));
+    setAds(updatedAds);
+    persistAdsSettings(updatedAds, adsEnabled, demoModeEnabled);
   };
 
   const handleSaveAdModal = (ad: AdConfiguration) => {
@@ -189,17 +229,25 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
       .map((s) => s.trim().replace(/^\/+|\/+$/g, ''))
       .filter(Boolean);
 
+    const safeId = ad.id && ad.id.trim()
+      ? ad.id.trim()
+      : `ad-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
     const finalAd: AdConfiguration = {
       ...ad,
+      id: safeId,
       includedSlugs: inc,
       excludedSlugs: exc,
     };
 
+    let updatedAds: AdConfiguration[];
     if (isCreating) {
-      setAds([...ads, finalAd]);
+      updatedAds = [...ads, finalAd];
     } else {
-      setAds(ads.map((a) => (a.id === finalAd.id ? finalAd : a)));
+      updatedAds = ads.map((a) => (a.id === finalAd.id ? finalAd : a));
     }
+    setAds(updatedAds);
+    persistAdsSettings(updatedAds, adsEnabled, demoModeEnabled);
     setEditingAd(null);
     setIsCreating(false);
   };
@@ -290,7 +338,11 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
               <input
                 type="checkbox"
                 checked={adsEnabled}
-                onChange={(e) => setAdsEnabled(e.target.checked)}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setAdsEnabled(val);
+                  persistAdsSettings(ads, val, demoModeEnabled);
+                }}
                 className="sr-only peer"
               />
               <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
@@ -307,7 +359,11 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
               <input
                 type="checkbox"
                 checked={demoModeEnabled}
-                onChange={(e) => setDemoModeEnabled(e.target.checked)}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setDemoModeEnabled(val);
+                  persistAdsSettings(ads, adsEnabled, val);
+                }}
                 className="sr-only peer"
               />
               <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
@@ -399,10 +455,13 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
             </div>
           ) : (
             ads.map((ad) => (
-              <div key={ad.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
-                <div className="space-y-1.5 flex-1">
+              <div
+                key={ad.id}
+                className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors"
+              >
+                <div className="space-y-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-extrabold text-slate-900 text-sm">{ad.name}</span>
+                    <span className="font-extrabold text-slate-900 text-sm truncate max-w-full">{ad.name}</span>
                     <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${ad.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
                       {ad.enabled ? 'Enabled' : 'Disabled'}
                     </span>
@@ -418,38 +477,51 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
                       </span>
                     ))}
                   </div>
-                  <p className="text-xs text-slate-500 line-clamp-1 font-mono">
-                    {ad.notes || ad.adCode.substring(0, 90) + '...'}
+                  <p className="text-xs text-slate-500 line-clamp-1 font-mono break-all truncate">
+                    {ad.notes || (ad.adCode ? ad.adCode.substring(0, 90) + '...' : 'No ad snippet configured')}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
                   <button
+                    type="button"
                     onClick={() => handleToggleAd(ad.id)}
-                    className={`px-3 py-1.5 rounded-xl font-semibold text-xs border cursor-pointer ${ad.enabled ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}
+                    className={`px-3 py-1.5 rounded-xl font-semibold text-xs border cursor-pointer transition-colors ${
+                      ad.enabled
+                        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                        : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                    }`}
+                    title={ad.enabled ? 'Pause this ad' : 'Resume serving this ad'}
                   >
-                    {ad.enabled ? 'Pause' : 'Activate'}
+                    {ad.enabled ? 'Pause' : 'Resume'}
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleEditAd(ad)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 font-semibold text-slate-700 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 font-semibold text-slate-700 cursor-pointer transition-colors shadow-2xs"
+                    title="Edit Ad"
                   >
                     <Edit className="h-3.5 w-3.5 text-blue-600" />
                     <span>Edit</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleDuplicateAd(ad)}
-                    className="p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 cursor-pointer"
-                    title="Duplicate"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 font-semibold cursor-pointer transition-colors shadow-2xs"
+                    title="Duplicate Ad"
                   >
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-3.5 w-3.5 text-slate-500" />
+                    <span className="hidden sm:inline">Duplicate</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleDeleteAd(ad.id)}
-                    className="p-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer"
-                    title="Delete"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold cursor-pointer transition-colors shadow-2xs"
+                    title="Delete Ad"
+                    aria-label={`Delete ${ad.name}`}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>
