@@ -164,17 +164,9 @@ export const HomepageView: React.FC<Props> = ({
             })}
           </div>
 
-          {/* Ad Before Footer on Paginated View */}
-          <AdSlotRenderer
-            placement="before_footer"
-            siteSettings={siteSettings}
-            contentType="homepage"
-            className="my-8"
-          />
-
           {/* Homepage Pagination Controls */}
           {totalPages > 1 && (
-            <div className="pt-8 border-t border-slate-200 flex items-center justify-between gap-4">
+            <div className="pt-4 sm:pt-6 border-t border-slate-200 flex items-center justify-between gap-4">
               {currentPageNum > 1 ? (
                 <a
                   href={currentPageNum === 2 ? '/' : `/page${currentPageNum - 1}/`}
@@ -234,6 +226,14 @@ export const HomepageView: React.FC<Props> = ({
               )}
             </div>
           )}
+
+          {/* Ad Before Footer on Paginated View */}
+          <AdSlotRenderer
+            placement="before_footer"
+            siteSettings={siteSettings}
+            contentType="homepage"
+            className="my-8"
+          />
         </div>
       </div>
     );
@@ -487,19 +487,12 @@ export const HomepageView: React.FC<Props> = ({
           case 'latest-posts':
             sectionContent = (
               <section key={section.id} className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-                      {section.title || 'Latest Dispatches & Insights'} {currentPageNum > 1 ? `(Page ${currentPageNum})` : ''}
-                    </h2>
-                    {section.subtitle && (
-                      <p className="text-xs md:text-sm text-slate-500 mt-1">{section.subtitle}</p>
-                    )}
-                  </div>
-                  {totalPages > 1 && (
-                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-                      Page {currentPageNum} of {totalPages}
-                    </span>
+                <div>
+                  <h2 className="text-xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    {section.title || 'Latest Dispatches & Insights'} {currentPageNum > 1 ? `(Page ${currentPageNum})` : ''}
+                  </h2>
+                  {section.subtitle && (
+                    <p className="text-xs md:text-sm text-slate-500 mt-1">{section.subtitle}</p>
                   )}
                 </div>
 
@@ -564,7 +557,7 @@ export const HomepageView: React.FC<Props> = ({
 
                 {/* Homepage Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="pt-8 border-t border-slate-200 flex items-center justify-between gap-4">
+                  <div className="pt-4 sm:pt-6 border-t border-slate-200 flex items-center justify-between gap-4">
                     {currentPageNum > 1 ? (
                       <a
                         href={currentPageNum === 2 ? '/' : `/page${currentPageNum - 1}/`}
