@@ -131,7 +131,7 @@ export const AdminLayout: React.FC<Props> = ({
     { id: 'backup-restore', label: 'Backup & Restore', icon: <Database className="h-4 w-4 text-teal-400" /> },
     { id: 'github-deployment', label: 'GitHub & Deployment', icon: <GitBranch className="h-4 w-4" /> },
     { id: 'tools', label: 'Tools & Astro Export', icon: <Wrench className="h-4 w-4" /> },
-    { id: 'ads', label: 'Ads Management', icon: <Megaphone className="h-4 w-4 text-blue-500" /> },
+    { id: 'ads', label: 'Ads Manager / Ad Inserter', icon: <Megaphone className="h-4 w-4 text-blue-500" /> },
     { id: 'scripts', label: 'Scripts & Integrations', icon: <Cpu className="h-4 w-4 text-indigo-500" /> },
     { id: 'sveltia-native', label: 'Native Sveltia CMS', icon: <Code2 className="h-4 w-4" /> },
   ];

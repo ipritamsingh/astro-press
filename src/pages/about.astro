@@ -50,7 +50,7 @@ const description =
   )}
   <App
     client:load
-    seed={initialPage ? { pages: [initialPage] } : undefined}
+    seed={initialPage ? { pages: [initialPage], siteSettings } : { siteSettings }}
     initialRoute={initialPage ? { type: 'page', page: initialPage } : { type: 'home' }}
   />
 </Layout>

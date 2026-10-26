@@ -30,14 +30,23 @@ try {
       }
     } catch (_) {}
 
-    // Suppress unhandled extension errors
+    // Suppress unhandled extension and virtual hydration errors
     window.addEventListener('error', (event) => {
       const msg = (event && (event.message || (event.error && (event.error.message || event.error.stack)))) || '';
       const file = (event && event.filename) || '';
       if (
-        (typeof msg === 'string' && msg.includes('Cannot set property fetch')) ||
-        (typeof file === 'string' && file.includes('chrome-extension://'))
+        (typeof msg === 'string' && (msg.includes('Cannot set property fetch') || msg.includes('before-hydration'))) ||
+        (typeof file === 'string' && (file.includes('chrome-extension://') || file.includes('before-hydration')))
       ) {
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+      }
+    }, true);
+
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event && event.reason;
+      const msg = (reason && (reason.message || reason.stack)) || (typeof reason === 'string' ? reason : '');
+      if (typeof msg === 'string' && (msg.includes('before-hydration') || msg.includes('Cannot set property fetch'))) {
         if (event.preventDefault) event.preventDefault();
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
       }
@@ -55,6 +64,7 @@ try {
       if (
         allText.includes('Cannot set property fetch') ||
         allText.includes('chrome-extension://') ||
+        allText.includes('before-hydration') ||
         allText.includes('send was called before connect') ||
         allText.includes('vite:ws')
       ) {
@@ -169,23 +179,9 @@ export default function App(props: AppProps = {}) {
   const [resetToken, setResetToken] = useState<string>('');
 
   // Mode: 'frontend' website or 'admin' WordPress panel (accessible via /wpadmin, #admin, ?admin=true)
-  const [mode, setMode] = useState<'frontend' | 'admin'>(() => {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      const search = window.location.search;
-      const hash = window.location.hash;
-      if (
-        path.startsWith('/wpadmin') ||
-        path.startsWith('/dashboard') ||
-        search.includes('admin=true') ||
-        search.includes('token=') ||
-        hash === '#admin'
-      ) {
-        return 'admin';
-      }
-    }
-    return 'frontend';
-  });
+  // Initial state is strictly 'frontend' for deterministic SSR hydration matching.
+  // URL check in useEffect automatically switches to 'admin' post-mount if required.
+  const [mode, setMode] = useState<'frontend' | 'admin'>('frontend');
   const [adminView, setAdminView] = useState<AdminView>('dashboard');
 
   useEffect(() => {
@@ -1023,6 +1019,7 @@ export default function App(props: AppProps = {}) {
                 sections={cms.homepageSections}
                 heroConfig={cms.heroConfig}
                 themeSettings={cms.themeSettings}
+                siteSettings={cms.siteSettings}
                 currentPage={currentRoute.pageNum || 1}
                 postsPerPage={cms.siteSettings.postsPerPage}
                 onNavigate={handleNavigate}
@@ -1039,6 +1036,7 @@ export default function App(props: AppProps = {}) {
                 allPosts={cms.posts}
                 comments={cms.comments}
                 authors={cms.authors}
+                siteSettings={cms.siteSettings}
                 onBack={() => {
                   setCurrentRoute({ type: 'home' });
                   if (typeof window !== 'undefined') window.history.pushState({}, '', '/');
@@ -1060,6 +1058,7 @@ export default function App(props: AppProps = {}) {
             {currentRoute.type === 'page' && (
               <SinglePageView
                 page={currentRoute.page}
+                siteSettings={cms.siteSettings}
                 onBack={() => {
                   setCurrentRoute({ type: 'home' });
                   if (typeof window !== 'undefined') window.history.pushState({}, '', '/');
@@ -1077,6 +1076,7 @@ export default function App(props: AppProps = {}) {
                 type={currentRoute.archiveType}
                 item={currentRoute.item}
                 posts={cms.posts}
+                siteSettings={cms.siteSettings}
                 onBack={() => {
                   setCurrentRoute({ type: 'home' });
                   if (typeof window !== 'undefined') window.history.pushState({}, '', '/');

@@ -186,6 +186,32 @@ export function loadStoredData(seed?: Partial<CMSDataState>): CMSDataState {
         Array.isArray(rawSiteSettings.communityLinks)
           ? rawSiteSettings.communityLinks
           : initialSiteSettings.communityLinks,
+      adsSettings: {
+        ...initialSiteSettings.adsSettings,
+        ...(rawSiteSettings.adsSettings || {}),
+        homepageAdsConfig: {
+          ...initialSiteSettings.adsSettings?.homepageAdsConfig,
+          ...(rawSiteSettings.adsSettings?.homepageAdsConfig || {}),
+        },
+        demoAdConfig: {
+          ...initialSiteSettings.adsSettings?.demoAdConfig,
+          ...(rawSiteSettings.adsSettings?.demoAdConfig || {}),
+        },
+        slots: Array.isArray(rawSiteSettings.adsSettings?.slots) && rawSiteSettings.adsSettings.slots.length > 0
+          ? rawSiteSettings.adsSettings.slots
+          : (initialSiteSettings.adsSettings?.slots || []),
+      },
+      scriptsSettings: {
+        ...initialSiteSettings.scriptsSettings,
+        ...(rawSiteSettings.scriptsSettings || {}),
+        integrations: Array.isArray(rawSiteSettings.scriptsSettings?.integrations) && rawSiteSettings.scriptsSettings.integrations.length > 0
+          ? rawSiteSettings.scriptsSettings.integrations
+          : (initialSiteSettings.scriptsSettings?.integrations || []),
+        consentBanner: {
+          ...initialSiteSettings.scriptsSettings?.consentBanner,
+          ...(rawSiteSettings.scriptsSettings?.consentBanner || {}),
+        },
+      },
     };
 
     let loadedHeroConfig = parsed.heroConfig || initialHeroConfig;
@@ -384,8 +410,9 @@ export function useCMS(seed?: Partial<CMSDataState>) {
   // browser's HTML parser silently restructures. That restructures the DOM
   // relative to what React emitted on the server, so SSR'ing these routes
   // produces a React #418 hydration mismatch even though the rendered text is
-  // byte-identical. See the note in src/pages/[slug].astro.
-  const [data, setData] = useState<CMSDataState>(() => loadStoredData(seed));
+  // Deterministically initialize from seed for both SSR and client initial hydration render.
+  // Stored modifications in localStorage are hydrated in useEffect after mount.
+  const [data, setData] = useState<CMSDataState>(() => stateFromSeed(seed));
 
   const syncWithAuthoritativeRemote = async (customSettings?: DeploymentSettings, customToken?: string): Promise<boolean> => {
     const settings = customSettings || data.deploymentSettings;
@@ -467,6 +494,16 @@ export function useCMS(seed?: Partial<CMSDataState>) {
   };
 
   useEffect(() => {
+    // Safely hydrate stored data from localStorage after DOM hydration completes
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = loadStoredData(seed);
+        setData(stored);
+      }
+    } catch (err) {
+      console.warn('Failed to hydrate stored CMS data', err);
+    }
+
     // Run authoritative sync on mount in background
     syncWithAuthoritativeRemote().catch(() => {});
     

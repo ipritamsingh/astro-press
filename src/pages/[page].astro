@@ -49,5 +49,5 @@ const publishedPosts = collectionPosts
   <script is:inline define:vars={{ pageNum }}>
     window.__ASTROPRESS_INITIAL_PAGE_NUM__ = pageNum;
   </script>
-  <App client:load seed={{ posts: publishedPosts }} initialRoute={{ type: 'home', pageNum }} />
+  <App client:load seed={{ posts: publishedPosts, siteSettings }} initialRoute={{ type: 'home', pageNum }} />
 </Layout>

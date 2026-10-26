@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { Page } from '../../types/cms';
+import { Page, SiteSettings } from '../../types/cms';
 import { GutenbergBlockRenderer } from '../common/GutenbergBlockRenderer';
 import { PostCardImage } from '../common/PostCardImage';
+import { AdSlotRenderer } from '../common/AdSlotRenderer';
 import { ArrowLeft, Edit3, Send, CheckCircle2, Mail, MapPin, Phone } from 'lucide-react';
 
 interface Props {
   page: Page;
+  siteSettings?: SiteSettings;
   onBack: () => void;
   onEditPage: (page: Page) => void;
 }
 
-export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) => {
+export const SinglePageView: React.FC<Props> = ({ page, siteSettings, onBack, onEditPage }) => {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +66,15 @@ export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) =>
         </button>
       </div>
 
+      {/* Ad Placement: Before Page Title */}
+      <AdSlotRenderer
+        placement="before_post_title"
+        siteSettings={siteSettings}
+        contentType="page"
+        currentSlug={page.slug}
+        className="mb-6"
+      />
+
       <header className="mb-8 space-y-3">
         <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
           {page.template} Template
@@ -83,6 +94,15 @@ export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) =>
       <div className="py-4">
         <GutenbergBlockRenderer blocks={page.blocks} rawMarkdown={page.body} />
       </div>
+
+      {/* Ad Placement: After Page Content */}
+      <AdSlotRenderer
+        placement="after_content"
+        siteSettings={siteSettings}
+        contentType="page"
+        currentSlug={page.slug}
+        className="my-8"
+      />
 
       {/* Interactive Contact Form if Contact Page */}
       {page.slug === 'contact' && (
@@ -198,6 +218,15 @@ export const SinglePageView: React.FC<Props> = ({ page, onBack, onEditPage }) =>
           </div>
         </div>
       )}
+
+      {/* Ad Placement: Before Footer */}
+      <AdSlotRenderer
+        placement="before_footer"
+        siteSettings={siteSettings}
+        contentType="page"
+        currentSlug={page.slug}
+        className="mt-12"
+      />
     </div>
   );
 };

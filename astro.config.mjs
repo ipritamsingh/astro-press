@@ -7,11 +7,103 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+function safeReactIntegration(options) {
+  const integration = react(options);
+  const origSetup = integration.hooks['astro:config:setup'];
+  integration.hooks['astro:config:setup'] = (args) => {
+    const customArgs = {
+      ...args,
+      injectScript: (stage, content) => {
+        if (stage === 'before-hydration') {
+          return;
+        }
+        return args.injectScript(stage, content);
+      },
+    };
+    return origSetup(customArgs);
+  };
+  return integration;
+}
+
 function d1AuthPlugin() {
   return {
     name: 'd1-auth-local-dev',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          res.end();
+          return;
+        }
+
+        if (
+          req.url &&
+          (req.url.includes('before-hydration') ||
+            req.url.includes('astro:scripts') ||
+            req.url.includes('@react-refresh'))
+        ) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', '*');
+          res.end(`
+export function injectIntoGlobalHook(globalObject) {
+  if (typeof window !== 'undefined' && !window.$RefreshReg$) {
+    window.$RefreshReg$ = function(type, id) { return type; };
+    window.$RefreshSig$ = function() { return function(type) { return type; }; };
+  }
+}
+export function register(type, id) {
+  return type;
+}
+export function createSignatureFunctionForTransform() {
+  return function(type) {
+    return type;
+  };
+}
+export function registerExportsForReactRefresh(filename, moduleExports) {}
+export function validateRefreshBoundaryAndEnqueueUpdate(filename, prevExports, nextExports) {}
+export const __hmr_import = (module) => Promise.resolve({});
+export function performReactRefresh() {}
+export function isLikelyComponentType(type) { return true; }
+export function setSignature(type, key, forceReset, getCustomHooks) {}
+export function collectCustomHooksForSignature(type) {}
+export function getFamilyByType(type) {}
+export function getFamilyByID(id) {}
+export function hasUnrecoverableErrors() { return false; }
+
+const RefreshRuntime = {
+  injectIntoGlobalHook,
+  register,
+  createSignatureFunctionForTransform,
+  registerExportsForReactRefresh,
+  validateRefreshBoundaryAndEnqueueUpdate,
+  performReactRefresh,
+  isLikelyComponentType,
+  setSignature,
+  collectCustomHooksForSignature,
+  getFamilyByType,
+  getFamilyByID,
+  hasUnrecoverableErrors,
+  __hmr_import
+};
+
+if (typeof window !== 'undefined') {
+  window.RefreshRuntime = RefreshRuntime;
+  if (!window.$RefreshReg$) window.$RefreshReg$ = register;
+  if (!window.$RefreshSig$) window.$RefreshSig$ = function() { return function(type) { return type; }; };
+}
+
+export default RefreshRuntime;
+`);
+          return;
+        }
+
         if (req.url && req.url.startsWith('/api/debug-fetch')) {
           let body = '';
           req.on('data', (chunk) => (body += chunk));
@@ -71,16 +163,14 @@ export default defineConfig({
     port: 3000,
     host: true,
   },
-  // NOTE: a previous `redirects: { '/admin': '/admin/index.html' }` entry was
-  // removed. Under `output: 'static'` it emitted a meta-refresh page at
-  // dist/admin/index.html, the exact path that public/admin/index.html (the
-  // Sveltia CMS shell) is copied to, so three artifacts competed for one output
-  // file. The redirect never won and only created a fragile collision.
   devToolbar: {
     enabled: false,
   },
-  integrations: [react()],
+  integrations: [safeReactIntegration()],
   vite: {
+    server: {
+      cors: true,
+    },
     plugins: [tailwindcss(), d1AuthPlugin()],
     resolve: {
       alias: {

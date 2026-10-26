@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Post, Comment, Author, Category } from '../../types/cms';
+import { Post, Comment, Author, Category, SiteSettings } from '../../types/cms';
 import { GutenbergBlockRenderer, parseMarkdownToBlocks } from '../common/GutenbergBlockRenderer';
 import { getPersistedMediaBlob } from '../../data/mediaStorage';
+import { AdSlotRenderer } from '../common/AdSlotRenderer';
 import {
   Clock,
   User,
@@ -26,6 +27,7 @@ interface Props {
   allPosts: Post[];
   comments: Comment[];
   authors: Author[];
+  siteSettings?: SiteSettings;
   onBack: () => void;
   onEditPost: (post: Post) => void;
   onSelectPost: (post: Post) => void;
@@ -39,6 +41,7 @@ export const SinglePostView: React.FC<Props> = ({
   allPosts,
   comments,
   authors,
+  siteSettings,
   onBack,
   onEditPost,
   onSelectPost,
@@ -288,6 +291,15 @@ export const SinglePostView: React.FC<Props> = ({
         <span className="text-slate-400 truncate max-w-[200px]">{post.title}</span>
       </nav>
 
+      {/* Ad Placement: Before Post Title */}
+      <AdSlotRenderer
+        placement="before_post_title"
+        siteSettings={siteSettings}
+        contentType="post"
+        currentSlug={post.slug}
+        className="mb-6"
+      />
+
       {/* Post Article Header */}
       <header className="space-y-4 pb-8 border-b border-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -303,6 +315,15 @@ export const SinglePostView: React.FC<Props> = ({
         <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-light">
           {post.excerpt}
         </p>
+
+        {/* Ad Placement: After Introduction */}
+        <AdSlotRenderer
+          placement="after_introduction"
+          siteSettings={siteSettings}
+          contentType="post"
+          currentSlug={post.slug}
+          className="my-4"
+        />
 
         {/* Metadata bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100">
@@ -496,6 +517,15 @@ export const SinglePostView: React.FC<Props> = ({
         </div>
       </header>
 
+      {/* Ad Placement: After Post Title and Metadata */}
+      <AdSlotRenderer
+        placement="after_post_title"
+        siteSettings={siteSettings}
+        contentType="post"
+        currentSlug={post.slug}
+        className="my-6"
+      />
+
       {/* Featured Cover Image */}
       {post.featuredImage && (
         <div className="my-8 rounded-2xl overflow-hidden bg-slate-100 shadow-md border border-slate-200">
@@ -513,10 +543,29 @@ export const SinglePostView: React.FC<Props> = ({
         </div>
       )}
 
+      {/* Ad Placement: Between Paragraphs / In-Article Top */}
+      <AdSlotRenderer
+        placement="between_paragraphs"
+        siteSettings={siteSettings}
+        contentType="post"
+        paragraphIndex={2}
+        currentSlug={post.slug}
+        className="my-6"
+      />
+
       {/* Body Content & Rendered Gutenberg Blocks */}
       <div className="py-6">
         <GutenbergBlockRenderer blocks={post.blocks} rawMarkdown={post.body} />
       </div>
+
+      {/* Ad Placement: After Selected Article Sections */}
+      <AdSlotRenderer
+        placement="after_sections"
+        siteSettings={siteSettings}
+        contentType="post"
+        currentSlug={post.slug}
+        className="my-6"
+      />
 
       {/* Tags Section */}
       {post.tags && post.tags.length > 0 && (
@@ -601,6 +650,24 @@ export const SinglePostView: React.FC<Props> = ({
           )}
         </div>
       </div>
+
+      {/* Ad Placement: After Article Content */}
+      <AdSlotRenderer
+        placement="after_content"
+        siteSettings={siteSettings}
+        contentType="post"
+        currentSlug={post.slug}
+        className="my-8"
+      />
+
+      {/* Ad Placement: Before Article Conclusion / Discussion */}
+      <AdSlotRenderer
+        placement="before_conclusion"
+        siteSettings={siteSettings}
+        contentType="post"
+        currentSlug={post.slug}
+        className="my-6"
+      />
 
       {/* Comments Moderation / Interaction Section */}
       <section className="my-12 pt-8 border-t border-slate-200 space-y-8">
@@ -732,6 +799,24 @@ export const SinglePostView: React.FC<Props> = ({
           </div>
         </section>
       )}
+
+      {/* Ad Placement: Sidebar Banner */}
+      <AdSlotRenderer
+        placement="sidebar"
+        siteSettings={siteSettings}
+        contentType="post"
+        currentSlug={post.slug}
+        className="my-8"
+      />
+
+      {/* Ad Placement: Before Footer */}
+      <AdSlotRenderer
+        placement="before_footer"
+        siteSettings={siteSettings}
+        contentType="post"
+        currentSlug={post.slug}
+        className="mt-12"
+      />
     </article>
   );
 };

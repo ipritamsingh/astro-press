@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SiteSettings, AdSlot } from '../../types/cms';
+import { SiteSettings, AdConfiguration, AdDisplayLocation, AdProviderType } from '../../types/cms';
+import { DEFAULT_DEMO_AD_CONFIG, DemoAdBanner } from '../common/DemoAdBanner';
 import {
   Megaphone,
   Plus,
@@ -11,13 +12,26 @@ import {
   Smartphone,
   Monitor,
   AlertCircle,
-  HelpCircle,
   Code,
   Image as ImageIcon,
   Sliders,
   X,
   ArrowUp,
   ArrowDown,
+  Layout,
+  Layers,
+  Eye,
+  CheckCircle2,
+  ShieldCheck,
+  Sparkles,
+  Cpu,
+  FileText,
+  Home,
+  FolderTree,
+  RotateCcw,
+  Copy,
+  Info,
+  Clock,
 } from 'lucide-react';
 
 interface Props {
@@ -25,417 +39,505 @@ interface Props {
   onUpdateSiteSettings: (settings: Partial<SiteSettings>) => void;
 }
 
-const PLACEMENT_OPTIONS = [
-  { id: 'before_post_title', label: '1. Before the post title' },
-  { id: 'after_post_title', label: '2. After the post title and metadata' },
-  { id: 'after_introduction', label: '3. After the introduction' },
-  { id: 'between_paragraphs', label: '4. Between article paragraphs' },
-  { id: 'after_sections', label: '5. After selected article sections' },
-  { id: 'before_conclusion', label: '6. Before the article conclusion' },
-  { id: 'after_content', label: '7. After the article content' },
-  { id: 'between_homepage_sections', label: '8. Between homepage sections' },
-  { id: 'between_archive_items', label: '9. Between category/archive listing items' },
-  { id: 'sidebar', label: '10. Sidebar' },
-  { id: 'before_footer', label: '11. Before the footer' },
-  { id: 'custom_placement', label: '12. Custom Registered Placement Point' },
+export const HOMEPAGE_PLACEMENTS = [
+  { id: 'homepage_above_hero', label: 'Before the Hero Section (Above Hero)' },
+  { id: 'homepage_below_hero', label: 'After the Hero Section (Below Hero)' },
+  { id: 'homepage_between_category_sections', label: 'Between Category & Featured Sections' },
+  { id: 'homepage_between_post_cards', label: 'Between Post Cards (Feed)', hasInterval: true },
+  { id: 'before_footer', label: 'Before Footer' },
+];
+
+export const POST_PLACEMENTS = [
+  { id: 'before_post_title', label: 'Before the Post Title' },
+  { id: 'after_post_title', label: 'After Post Title & Metadata' },
+  { id: 'before_intro', label: 'Before Introduction Paragraph' },
+  { id: 'after_intro', label: 'After Introduction Paragraph' },
+  { id: 'between_paragraphs', label: 'Between Article Paragraphs', hasInterval: true },
+  { id: 'after_sections', label: 'After Selected Article Sections' },
+  { id: 'before_conclusion', label: 'Before Conclusion / Discussion' },
+  { id: 'after_content', label: 'After Article Content & Author Box' },
+  { id: 'sidebar', label: 'Sidebar Widget Area' },
+];
+
+export const PAGE_PLACEMENTS = [
+  { id: 'before_page_title', label: 'Before the Page Title' },
+  { id: 'after_page_title', label: 'After Page Title' },
+  { id: 'before_page_content', label: 'Before Page Content' },
+  { id: 'after_page_content', label: 'After Page Content' },
+  { id: 'before_footer', label: 'Before Page Footer' },
+  { id: 'sidebar', label: 'Sidebar Widget Area' },
+];
+
+export const ARCHIVE_PLACEMENTS = [
+  { id: 'before_archive_title', label: 'Before Archive Title & Description' },
+  { id: 'after_archive_title', label: 'After Archive Title' },
+  { id: 'before_listing', label: 'Before Listing Items' },
+  { id: 'between_listing_items', label: 'Between Listing Cards', hasInterval: true },
+  { id: 'after_listing', label: 'After Listing Items' },
+  { id: 'sidebar', label: 'Sidebar Widget Area' },
+];
+
+export const SIDEBAR_PLACEMENTS = [
+  { id: 'before_sidebar', label: 'Before Sidebar Widgets' },
+  { id: 'after_sidebar', label: 'After Sidebar Widgets' },
+  { id: 'sticky_sidebar', label: 'Sticky Sidebar Unit' },
+];
+
+export const FOOTER_PLACEMENTS = [
+  { id: 'before_site_footer', label: 'Before Site Footer (Site-Wide)' },
+  { id: 'after_main_content', label: 'After Main Content & Before Footer' },
 ];
 
 export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings }) => {
-  const currentAdsSettings = siteSettings?.adsSettings || {
+  const currentAds = siteSettings?.adsSettings || {
     adsEnabled: true,
+    demoModeEnabled: false,
     publisherId: '',
     autoAdsEnabled: false,
-    slots: [],
+    ads: [],
   };
 
-  const [adsEnabled, setAdsEnabled] = useState<boolean>(currentAdsSettings.adsEnabled);
-  const [publisherId, setPublisherId] = useState<string>(currentAdsSettings.publisherId || '');
-  const [autoAdsEnabled, setAutoAdsEnabled] = useState<boolean>(currentAdsSettings.autoAdsEnabled || false);
-  const [slots, setSlots] = useState<AdSlot[]>(currentAdsSettings.slots || []);
-
-  const [editingSlot, setEditingSlot] = useState<AdSlot | null>(null);
+  const [adsEnabled, setAdsEnabled] = useState<boolean>(currentAds.adsEnabled !== false);
+  const [demoModeEnabled, setDemoModeEnabled] = useState<boolean>(Boolean(currentAds.demoModeEnabled));
+  const [ads, setAds] = useState<AdConfiguration[]>(currentAds.ads || []);
+  
+  const [editingAd, setEditingAd] = useState<AdConfiguration | null>(null);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<boolean>(false);
 
-  const handleSave = () => {
-    setValidationError(null);
-    if (adsEnabled && !publisherId.trim()) {
-      setValidationError('Google AdSense Publisher ID is recommended when ads are enabled.');
-    }
+  // Slug input helpers for modal
+  const [includedSlugsInput, setIncludedSlugsInput] = useState<string>('');
+  const [excludedSlugsInput, setExcludedSlugsInput] = useState<string>('');
 
+  const handleSaveAll = () => {
     onUpdateSiteSettings({
       adsSettings: {
         adsEnabled,
-        publisherId: publisherId.trim(),
-        autoAdsEnabled,
-        slots,
+        demoModeEnabled,
+        publisherId: currentAds.publisherId || '',
+        autoAdsEnabled: currentAds.autoAdsEnabled || false,
+        ads,
       },
     });
-
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
 
-  const handleAddNewSlot = () => {
-    const newSlot: AdSlot = {
-      id: 'slot-' + Date.now(),
-      name: 'New Ad Placement',
+  const handleAddNewAd = () => {
+    const newAd: AdConfiguration = {
+      id: 'ad-' + Date.now(),
+      name: 'New Ad Unit',
       provider: 'adsense',
-      adUnitId: '',
-      format: 'responsive',
-      placement: 'between_paragraphs',
+      adCode: '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>\n<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0000000000000000" data-ad-slot="1234567890" data-ad-format="auto" data-full-width-responsive="true"></ins>\n<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>',
       enabled: true,
-      deviceVisibility: 'all',
-      order: slots.length + 1,
-      contentParagraphIndex: 2,
-      targeting: {
-        showOnHomepage: false,
-        showOnPosts: true,
-        showOnPages: false,
-        showOnCategories: false,
-        showOnAuthors: false,
+      displayLocations: ['posts'],
+      placementRules: {
+        posts: { placements: ['after_intro'], insertionInterval: 2 },
       },
+      deviceVisibility: 'all',
+      includedSlugs: [],
+      excludedSlugs: [],
       notes: '',
+      createdAt: new Date().toISOString(),
     };
-    setEditingSlot(newSlot);
+    setEditingAd(newAd);
+    setIncludedSlugsInput('');
+    setExcludedSlugsInput('');
     setIsCreating(true);
   };
 
-  const handleSaveSlot = (slot: AdSlot) => {
-    if (!slot.name.trim()) {
-      alert('Please provide an ad slot name.');
-      return;
-    }
-    if (isCreating) {
-      setSlots([...slots, slot]);
-    } else {
-      setSlots(slots.map((s) => (s.id === slot.id ? slot : s)));
-    }
-    setEditingSlot(null);
+  const handleEditAd = (ad: AdConfiguration) => {
+    setEditingAd({ ...ad });
+    setIncludedSlugsInput((ad.includedSlugs || []).join(', '));
+    setExcludedSlugsInput((ad.excludedSlugs || []).join(', '));
     setIsCreating(false);
   };
 
-  const handleDeleteSlot = (id: string) => {
-    if (confirm('Are you sure you want to delete this ad slot?')) {
-      setSlots(slots.filter((s) => s.id !== id));
+  const handleDuplicateAd = (ad: AdConfiguration) => {
+    const duplicated: AdConfiguration = {
+      ...ad,
+      id: 'ad-' + Date.now(),
+      name: `${ad.name} (Copy)`,
+      createdAt: new Date().toISOString(),
+    };
+    setAds([...ads, duplicated]);
+  };
+
+  const handleDeleteAd = (id: string) => {
+    if (confirm('Are you sure you want to delete this ad?')) {
+      setAds(ads.filter((a) => a.id !== id));
     }
   };
 
-  const handleToggleSlot = (id: string) => {
-    setSlots(slots.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
+  const handleToggleAd = (id: string) => {
+    setAds(ads.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)));
   };
 
-  const handleMoveSlot = (index: number, direction: 'up' | 'down') => {
-    if ((direction === 'up' && index === 0) || (direction === 'down' && index === slots.length - 1)) {
+  const handleSaveAdModal = (ad: AdConfiguration) => {
+    if (!ad.name.trim()) {
+      alert('Please provide an ad name.');
       return;
     }
-    const newSlots = [...slots];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    const temp = newSlots[index];
-    newSlots[index] = newSlots[targetIndex];
-    newSlots[targetIndex] = temp;
-    newSlots.forEach((s, idx) => (s.order = idx + 1));
-    setSlots(newSlots);
+
+    const inc = includedSlugsInput
+      .split(',')
+      .map((s) => s.trim().replace(/^\/+|\/+$/g, ''))
+      .filter(Boolean);
+    const exc = excludedSlugsInput
+      .split(',')
+      .map((s) => s.trim().replace(/^\/+|\/+$/g, ''))
+      .filter(Boolean);
+
+    const finalAd: AdConfiguration = {
+      ...ad,
+      includedSlugs: inc,
+      excludedSlugs: exc,
+    };
+
+    if (isCreating) {
+      setAds([...ads, finalAd]);
+    } else {
+      setAds(ads.map((a) => (a.id === finalAd.id ? finalAd : a)));
+    }
+    setEditingAd(null);
+    setIsCreating(false);
   };
 
+  const toggleLocation = (location: AdDisplayLocation) => {
+    if (!editingAd) return;
+    const currentLocs = editingAd.displayLocations || [];
+    const exists = currentLocs.includes(location);
+    const newLocs = exists ? currentLocs.filter((l) => l !== location) : [...currentLocs, location];
+    
+    // Ensure placementRules entry exists
+    const newRules = { ...editingAd.placementRules };
+    if (!exists && !newRules[location]) {
+      newRules[location] = { placements: [] };
+    }
+
+    setEditingAd({
+      ...editingAd,
+      displayLocations: newLocs,
+      placementRules: newRules,
+    });
+  };
+
+  const togglePlacementForLocation = (location: string, placementId: string) => {
+    if (!editingAd) return;
+    const currentLocRule = editingAd.placementRules[location] || { placements: [] };
+    const currentPlacements = currentLocRule.placements || [];
+    const exists = currentPlacements.includes(placementId);
+    const newPlacements = exists
+      ? currentPlacements.filter((p) => p !== placementId)
+      : [...currentPlacements, placementId];
+
+    setEditingAd({
+      ...editingAd,
+      placementRules: {
+        ...editingAd.placementRules,
+        [location]: {
+          ...currentLocRule,
+          placements: newPlacements,
+        },
+      },
+    });
+  };
+
+  const updateIntervalForLocation = (location: string, interval: number) => {
+    if (!editingAd) return;
+    const currentLocRule = editingAd.placementRules[location] || { placements: [] };
+    setEditingAd({
+      ...editingAd,
+      placementRules: {
+        ...editingAd.placementRules,
+        [location]: {
+          ...currentLocRule,
+          insertionInterval: interval,
+        },
+      },
+    });
+  };
+
+  const activeAdsCount = ads.filter((a) => a.enabled).length;
+  const disabledAdsCount = ads.length - activeAdsCount;
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto font-sans text-xs pb-16">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 text-xs font-sans text-slate-800 pb-20">
+      {/* WordPress-Style Header */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Megaphone className="h-7 w-7 text-blue-600" />
-            <span>Ads Management</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Configure global ad networks, programmatic slots, custom house banners, and precise page targeting rules
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleAddNewSlot}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add New Ad Slot</span>
-          </button>
-          <button
-            onClick={handleSave}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors"
-          >
-            {saveSuccess ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-            <span>{saveSuccess ? 'Saved!' : 'Save Changes'}</span>
-          </button>
-        </div>
-      </div>
-
-      {validationError && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
-          <span>{validationError}</span>
-        </div>
-      )}
-
-      {/* Global Controls Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">Global Advertisement Status</h3>
-            <p className="text-slate-500 mt-0.5">Master toggle to enable or disable all site advertisements instantly</p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={adsEnabled}
-              onChange={(e) => setAdsEnabled(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            <span className="ml-3 font-bold text-slate-700">{adsEnabled ? 'Ads Active' : 'Ads Disabled'}</span>
-          </label>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="font-bold text-slate-700 block">Google AdSense Publisher ID</label>
-            <input
-              type="text"
-              value={publisherId}
-              onChange={(e) => setPublisherId(e.target.value)}
-              placeholder="ca-pub-XXXXXXXXXXXXXXXX"
-              className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-mono text-slate-800"
-            />
-            <p className="text-[11px] text-slate-400">Required for Google AdSense programmatic monetization units.</p>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-2.5">
+            <span className="p-2.5 rounded-2xl bg-blue-50 text-blue-600 shadow-2xs">
+              <Megaphone className="h-6 w-6" />
+            </span>
             <div>
-              <span className="font-bold text-slate-800 block">Google Auto Ads</span>
-              <span className="text-slate-500 text-[11px]">Let Google automatically place optimal ads across pages</span>
+              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                Ads Manager / Ad Inserter
+              </h1>
+              <p className="text-slate-500 text-xs mt-0.5">
+                WordPress Ad Inserter Style • Multi-Location Insertion Engine
+              </p>
             </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Global Ads Toggle */}
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
+            <span className="font-bold text-slate-700">Global Ads:</span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
-                checked={autoAdsEnabled}
-                onChange={(e) => setAutoAdsEnabled(e.target.checked)}
+                checked={adsEnabled}
+                onChange={(e) => setAdsEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+            <span className={`font-bold uppercase text-[10px] px-2 py-0.5 rounded ${adsEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+              {adsEnabled ? 'ON' : 'OFF'}
+            </span>
+          </div>
+
+          {/* Demo Mode Toggle */}
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
+            <span className="font-bold text-slate-700">Demo Mode:</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={demoModeEnabled}
+                onChange={(e) => setDemoModeEnabled(e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
+            <span className={`font-bold uppercase text-[10px] px-2 py-0.5 rounded ${demoModeEnabled ? 'bg-blue-50 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
+              {demoModeEnabled ? 'ACTIVE' : 'OFF'}
+            </span>
           </div>
+
+          <button
+            type="button"
+            onClick={handleSaveAll}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm transition-all cursor-pointer active:scale-95"
+          >
+            <Save className="h-4 w-4" />
+            <span>Save Changes</span>
+          </button>
         </div>
       </div>
 
-      {/* Ad Slots List */}
+      {saveSuccess && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <span>Ads Manager settings saved successfully. Renderers updated across all site templates.</span>
+        </div>
+      )}
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Configured Ads</span>
+          <div className="text-2xl font-extrabold text-slate-900">{ads.length}</div>
+          <p className="text-[11px] text-slate-500">Managed ad insertion blocks</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Ads</span>
+          <div className="text-2xl font-extrabold text-emerald-600">{activeAdsCount}</div>
+          <p className="text-[11px] text-slate-500">Currently serving on frontend</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Disabled Ads</span>
+          <div className="text-2xl font-extrabold text-slate-400">{disabledAdsCount}</div>
+          <p className="text-[11px] text-slate-500">Paused ad insertion blocks</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Global Master Switch</span>
+          <div className={`text-sm font-extrabold mt-1 ${adsEnabled ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {adsEnabled ? 'ALL ADS ACTIVE' : 'ALL ADS DISABLED'}
+          </div>
+          <p className="text-[11px] text-slate-500">Controls all site advertisements</p>
+        </div>
+      </div>
+
+      {/* Main Ads List & Add Button */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Configured Ad Slots ({slots.length})</h3>
-            <p className="text-slate-500 mt-0.5">Manage manual slots, placement points, custom banners, and targeting rules</p>
+            <h2 className="text-sm font-bold text-slate-900">Saved Advertisement Blocks</h2>
+            <p className="text-slate-500 mt-0.5">
+              Paste code once, target multiple page types, and select exact placement positions.
+            </p>
           </div>
+          <button
+            onClick={handleAddNewAd}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            <span>+ Add New Ad</span>
+          </button>
         </div>
 
-        {slots.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 space-y-3">
-            <Megaphone className="h-10 w-10 mx-auto text-slate-300" />
-            <p>No ad slots configured yet. Click "Add New Ad Slot" to get started.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {slots.map((slot, index) => {
-              const placementLabel = PLACEMENT_OPTIONS.find((p) => p.id === slot.placement)?.label || slot.placement;
-              return (
-                <div key={slot.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-bold font-mono text-[10px]">
-                        #{slot.order}
-                      </span>
-                      <h4 className="font-bold text-slate-900 text-sm">{slot.name}</h4>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          slot.provider === 'adsense'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : slot.provider === 'custom_image'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-violet-50 text-violet-700 border border-violet-200'
-                        }`}
-                      >
-                        {slot.provider === 'adsense'
-                          ? 'Google AdSense'
-                          : slot.provider === 'custom_image'
-                          ? 'Custom Image Ad'
-                          : 'Third Party HTML'}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3 text-slate-500 text-[11px]">
-                      <span className="font-medium text-slate-700">Placement: {placementLabel}</span>
-                      <span>•</span>
-                      <span>Format: {slot.format}</span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        {slot.deviceVisibility === 'desktop' ? (
-                          <Monitor className="h-3 w-3" />
-                        ) : slot.deviceVisibility === 'mobile' ? (
-                          <Smartphone className="h-3 w-3" />
-                        ) : (
-                          <Globe className="h-3 w-3" />
-                        )}
-                        <span className="capitalize">{slot.deviceVisibility}</span>
-                      </span>
-                    </div>
+        <div className="divide-y divide-slate-100">
+          {ads.length === 0 ? (
+            <div className="p-16 text-center text-slate-400 space-y-3">
+              <Megaphone className="h-10 w-10 mx-auto opacity-40 text-blue-500" />
+              <p className="text-sm font-bold text-slate-700">No advertisement blocks configured.</p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Click "+ Add New Ad" above to paste your AdSense snippet or banner code and select where it should appear.
+              </p>
+              <button
+                onClick={handleAddNewAd}
+                className="px-4 py-2 rounded-xl bg-blue-50 text-blue-600 font-bold hover:bg-blue-100 cursor-pointer"
+              >
+                + Add Your First Ad
+              </button>
+            </div>
+          ) : (
+            ads.map((ad) => (
+              <div key={ad.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-extrabold text-slate-900 text-sm">{ad.name}</span>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${ad.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                      {ad.enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
+                      Provider: {ad.provider}
+                    </span>
                   </div>
-
-                  <div className="flex items-center gap-2 self-end md:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleMoveSlot(index, 'up')}
-                      disabled={index === 0}
-                      className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30"
-                      title="Move Up"
-                    >
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveSlot(index, 'down')}
-                      disabled={index === slots.length - 1}
-                      className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30"
-                      title="Move Down"
-                    >
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    </button>
-
-                    <label className="relative inline-flex items-center cursor-pointer ml-2">
-                      <input
-                        type="checkbox"
-                        checked={slot.enabled}
-                        onChange={() => handleToggleSlot(slot.id)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingSlot(slot);
-                        setIsCreating(false);
-                      }}
-                      className="p-2 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 transition-colors ml-2"
-                      title="Edit Slot"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteSlot(slot.id)}
-                      className="p-2 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 transition-colors"
-                      title="Delete Slot"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-slate-600">
+                    <span className="font-bold text-slate-700">Locations:</span>
+                    {(ad.displayLocations || []).map((loc) => (
+                      <span key={loc} className="bg-slate-100 px-2 py-0.5 rounded uppercase text-[10px] font-medium text-slate-700">
+                        {loc}
+                      </span>
+                    ))}
                   </div>
+                  <p className="text-xs text-slate-500 line-clamp-1 font-mono">
+                    {ad.notes || ad.adCode.substring(0, 90) + '...'}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleToggleAd(ad.id)}
+                    className={`px-3 py-1.5 rounded-xl font-semibold text-xs border cursor-pointer ${ad.enabled ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}
+                  >
+                    {ad.enabled ? 'Pause' : 'Activate'}
+                  </button>
+                  <button
+                    onClick={() => handleEditAd(ad)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 font-semibold text-slate-700 cursor-pointer"
+                  >
+                    <Edit className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDuplicateAd(ad)}
+                    className="p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 cursor-pointer"
+                    title="Duplicate"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAd(ad.id)}
+                    className="p-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
-      {/* Edit / Create Modal */}
-      {editingSlot && (
+      {/* ========================================================================= */}
+      {/* EDIT / CREATE AD MODAL (WordPress Ad Inserter Style)                       */}
+      {/* ========================================================================= */}
+      {editingAd && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 space-y-6">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <h3 className="text-base font-extrabold text-slate-900">
-                {isCreating ? 'Create New Ad Slot' : `Edit Ad Slot: ${editingSlot.name}`}
+                {isCreating ? 'Create New Advertisement (Ad Inserter)' : `Edit Ad: ${editingAd.name}`}
               </h3>
               <button
-                onClick={() => setEditingSlot(null)}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500"
+                onClick={() => setEditingAd(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Basic Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Slot Name</label>
+                  <label className="font-bold text-slate-700">Ad Block Name *</label>
                   <input
                     type="text"
-                    value={editingSlot.name}
-                    onChange={(e) => setEditingSlot({ ...editingSlot, name: e.target.value })}
+                    value={editingAd.name}
+                    onChange={(e) => setEditingAd({ ...editingAd, name: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-medium"
-                    placeholder="e.g. Header Leaderboard"
+                    placeholder="e.g. Header Leaderboard or In-Article Banner"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Provider</label>
+                  <label className="font-bold text-slate-700">Ad Provider / Type</label>
                   <select
-                    value={editingSlot.provider}
-                    onChange={(e: any) => setEditingSlot({ ...editingSlot, provider: e.target.value })}
+                    value={editingAd.provider}
+                    onChange={(e: any) => setEditingAd({ ...editingAd, provider: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-medium"
                   >
                     <option value="adsense">Google AdSense</option>
-                    <option value="custom_image">Custom Image & Link Ad</option>
-                    <option value="third_party">Third-Party HTML / Banner</option>
+                    <option value="custom_image">Custom Image Banner</option>
+                    <option value="third_party">Trusted Embed / HTML</option>
+                    <option value="demo">Demo Ad (Test Mode)</option>
                   </select>
                 </div>
               </div>
 
-              {editingSlot.provider === 'adsense' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700">Ad Unit ID / Slot ID</label>
-                    <input
-                      type="text"
-                      value={editingSlot.adUnitId}
-                      onChange={(e) => setEditingSlot({ ...editingSlot, adUnitId: e.target.value })}
-                      placeholder="e.g. 1234567890"
-                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700">Ad Format</label>
-                    <select
-                      value={editingSlot.format}
-                      onChange={(e: any) => setEditingSlot({ ...editingSlot, format: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-medium"
-                    >
-                      <option value="responsive">Responsive Display</option>
-                      <option value="auto">Auto Size</option>
-                      <option value="rectangle">Medium Rectangle (300x250)</option>
-                      <option value="leaderboard">Leaderboard (728x90)</option>
-                      <option value="skyscraper">Skyscraper (160x600)</option>
-                      <option value="in-article">In-Article Flow</option>
-                    </select>
-                  </div>
+              {/* Ad Code / Content */}
+              {editingAd.provider !== 'custom_image' ? (
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">
+                    {editingAd.provider === 'adsense' ? 'Google AdSense Ad Unit Snippet / Code *' : 'Ad Code / HTML Embed *'}
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={editingAd.adCode}
+                    onChange={(e) => setEditingAd({ ...editingAd, adCode: e.target.value })}
+                    placeholder="Paste your ad unit code here..."
+                    className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs outline-none focus:border-blue-500"
+                  ></textarea>
                 </div>
-              )}
-
-              {editingSlot.provider === 'custom_image' && (
+              ) : (
                 <div className="space-y-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <h4 className="font-bold text-slate-800">Custom Banner Settings</h4>
+                  <h4 className="font-bold text-slate-800">Custom Banner Image Settings</h4>
                   <div className="space-y-1.5">
                     <label className="font-medium text-slate-700">Image URL</label>
                     <input
                       type="text"
-                      value={editingSlot.customImage?.imageUrl || ''}
+                      value={editingAd.customImage?.imageUrl || ''}
                       onChange={(e) =>
-                        setEditingSlot({
-                          ...editingSlot,
-                          customImage: { ...(editingSlot.customImage || { destinationUrl: '', altText: '' }), imageUrl: e.target.value },
+                        setEditingAd({
+                          ...editingAd,
+                          customImage: {
+                            ...(editingAd.customImage || { destinationUrl: '' }),
+                            imageUrl: e.target.value,
+                          },
                         })
                       }
-                      placeholder="/uploads/banner.webp or https://..."
-                      className="w-full p-2 rounded-lg border border-slate-200 bg-white outline-none focus:border-blue-500 font-mono text-[11px]"
+                      placeholder="https://images.unsplash.com/... or /uploads/banner.webp"
+                      className="w-full p-2 rounded-lg border border-slate-200 bg-white font-mono text-xs"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -443,84 +545,160 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
                       <label className="font-medium text-slate-700">Destination URL</label>
                       <input
                         type="text"
-                        value={editingSlot.customImage?.destinationUrl || ''}
+                        value={editingAd.customImage?.destinationUrl || ''}
                         onChange={(e) =>
-                          setEditingSlot({
-                            ...editingSlot,
-                            customImage: { ...(editingSlot.customImage || { imageUrl: '', altText: '' }), destinationUrl: e.target.value },
+                          setEditingAd({
+                            ...editingAd,
+                            customImage: {
+                              ...(editingAd.customImage || { imageUrl: '' }),
+                              destinationUrl: e.target.value,
+                            },
                           })
                         }
                         placeholder="https://example.com/promo"
-                        className="w-full p-2 rounded-lg border border-slate-200 bg-white outline-none focus:border-blue-500 text-[11px]"
+                        className="w-full p-2 rounded-lg border border-slate-200 bg-white text-xs"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="font-medium text-slate-700">Alt Text / Caption</label>
+                      <label className="font-medium text-slate-700">Alt Text / Description</label>
                       <input
                         type="text"
-                        value={editingSlot.customImage?.altText || ''}
+                        value={editingAd.customImage?.altText || ''}
                         onChange={(e) =>
-                          setEditingSlot({
-                            ...editingSlot,
-                            customImage: { ...(editingSlot.customImage || { imageUrl: '', destinationUrl: '' }), altText: e.target.value },
+                          setEditingAd({
+                            ...editingAd,
+                            customImage: {
+                              ...(editingAd.customImage || { imageUrl: '', destinationUrl: '' }),
+                              altText: e.target.value,
+                            },
                           })
                         }
-                        placeholder="Promotional banner description"
-                        className="w-full p-2 rounded-lg border border-slate-200 bg-white outline-none focus:border-blue-500 text-[11px]"
+                        placeholder="Promotional banner"
+                        className="w-full p-2 rounded-lg border border-slate-200 bg-white text-xs"
                       />
                     </div>
                   </div>
                 </div>
               )}
 
-              {editingSlot.provider === 'third_party' && (
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Third-Party HTML / Script Code</label>
-                  <textarea
-                    rows={4}
-                    value={editingSlot.thirdPartyHtml || ''}
-                    onChange={(e) => setEditingSlot({ ...editingSlot, thirdPartyHtml: e.target.value })}
-                    placeholder="<div>Secure banner or script snippet...</div>"
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-mono text-[11px]"
-                  ></textarea>
+              {/* Display Locations (Multiple Checkboxes) */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <label className="font-bold text-slate-800 block">
+                  Display Locations (Select one or multiple page types):
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'homepage', label: 'Homepage', icon: <Home className="h-4 w-4 text-blue-600" /> },
+                    { id: 'posts', label: 'Single Posts / Articles', icon: <FileText className="h-4 w-4 text-violet-600" /> },
+                    { id: 'pages', label: 'Static Pages', icon: <Layers className="h-4 w-4 text-emerald-600" /> },
+                    { id: 'archives', label: 'Categories / Archives', icon: <FolderTree className="h-4 w-4 text-amber-600" /> },
+                    { id: 'sidebar', label: 'Sidebar', icon: <Sliders className="h-4 w-4 text-indigo-600" /> },
+                    { id: 'footer', label: 'Global Footer', icon: <Layout className="h-4 w-4 text-rose-600" /> },
+                  ].map((loc) => {
+                    const isSelected = (editingAd.displayLocations || []).includes(loc.id as any);
+                    return (
+                      <button
+                        key={loc.id}
+                        type="button"
+                        onClick={() => toggleLocation(loc.id as any)}
+                        className={`p-3 rounded-xl border text-left font-bold text-xs transition-all cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-50/80 text-blue-900 shadow-2xs'
+                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {loc.icon}
+                          <span>{loc.label}</span>
+                        </div>
+                        <span className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'}`}>
+                          {isSelected ? '✓' : ''}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Placement Location</label>
-                  <select
-                    value={editingSlot.placement}
-                    onChange={(e) => setEditingSlot({ ...editingSlot, placement: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-medium"
-                  >
-                    {PLACEMENT_OPTIONS.map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Placement Positions for each selected location */}
+              {(editingAd.displayLocations || []).map((loc) => {
+                let placementsList: any[] = [];
+                let locTitle = '';
+                if (loc === 'homepage') {
+                  placementsList = HOMEPAGE_PLACEMENTS;
+                  locTitle = 'Homepage Placement Positions';
+                } else if (loc === 'posts') {
+                  placementsList = POST_PLACEMENTS;
+                  locTitle = 'Single Post / Article Placement Positions';
+                } else if (loc === 'pages') {
+                  placementsList = PAGE_PLACEMENTS;
+                  locTitle = 'Static Page Placement Positions';
+                } else if (loc === 'archives') {
+                  placementsList = ARCHIVE_PLACEMENTS;
+                  locTitle = 'Category / Archive Placement Positions';
+                } else if (loc === 'sidebar') {
+                  placementsList = SIDEBAR_PLACEMENTS;
+                  locTitle = 'Sidebar Placement Positions';
+                } else if (loc === 'footer') {
+                  placementsList = FOOTER_PLACEMENTS;
+                  locTitle = 'Global Footer Placement Positions';
+                }
 
-                {editingSlot.placement === 'between_paragraphs' && (
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700">After Paragraph Number</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={editingSlot.contentParagraphIndex || 2}
-                      onChange={(e) => setEditingSlot({ ...editingSlot, contentParagraphIndex: parseInt(e.target.value) || 2 })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-medium"
-                    />
+                const currentRule = editingAd.placementRules[loc] || { placements: [] };
+
+                return (
+                  <div key={loc} className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5 text-blue-700">
+                      <span>📌</span>
+                      <span>{locTitle}</span>
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {placementsList.map((p) => {
+                        const isChecked = (currentRule.placements || []).includes(p.id);
+                        return (
+                          <div key={p.id} className="space-y-2">
+                            <label className="flex items-start gap-2.5 cursor-pointer bg-white p-2.5 rounded-lg border border-slate-200 hover:border-slate-300">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => togglePlacementForLocation(loc, p.id)}
+                                className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-slate-800 font-medium text-xs">{p.label}</span>
+                            </label>
+
+                            {isChecked && p.hasInterval && (
+                              <div className="pl-6 flex items-center gap-2">
+                                <span className="text-[11px] font-semibold text-slate-600">Insertion Interval:</span>
+                                <select
+                                  value={currentRule.insertionInterval || (loc === 'posts' ? 2 : 2)}
+                                  onChange={(e) => updateIntervalForLocation(loc, parseInt(e.target.value, 10))}
+                                  className="p-1.5 rounded border border-slate-200 bg-white font-medium text-xs"
+                                >
+                                  <option value={1}>Every 1 item / paragraph</option>
+                                  <option value={2}>Every 2 items / paragraphs</option>
+                                  <option value={3}>Every 3 items / paragraphs</option>
+                                  <option value={4}>Every 4 items / paragraphs</option>
+                                  <option value={5}>Every 5 items / paragraphs</option>
+                                  <option value={6}>Every 6 items / paragraphs</option>
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
+                );
+              })}
 
+              {/* Device Visibility & Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-700">Device Visibility</label>
                   <select
-                    value={editingSlot.deviceVisibility}
-                    onChange={(e: any) => setEditingSlot({ ...editingSlot, deviceVisibility: e.target.value })}
+                    value={editingAd.deviceVisibility}
+                    onChange={(e: any) => setEditingAd({ ...editingAd, deviceVisibility: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-medium"
                   >
                     <option value="all">All Devices (Desktop, Tablet, Mobile)</option>
@@ -528,82 +706,28 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
                     <option value="mobile">Mobile & Tablet Only</option>
                   </select>
                 </div>
-              </div>
 
-              {/* Page Targeting Rules */}
-              <div className="space-y-3 pt-3 border-t border-slate-100">
-                <h4 className="font-bold text-slate-800">Page Targeting & Include Rules</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editingSlot.targeting.showOnHomepage}
-                      onChange={(e) =>
-                        setEditingSlot({
-                          ...editingSlot,
-                          targeting: { ...editingSlot.targeting, showOnHomepage: e.target.checked },
-                        })
-                      }
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-slate-700">Homepage</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editingSlot.targeting.showOnPosts}
-                      onChange={(e) =>
-                        setEditingSlot({
-                          ...editingSlot,
-                          targeting: { ...editingSlot.targeting, showOnPosts: e.target.checked },
-                        })
-                      }
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-slate-700">Single Posts</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editingSlot.targeting.showOnPages}
-                      onChange={(e) =>
-                        setEditingSlot({
-                          ...editingSlot,
-                          targeting: { ...editingSlot.targeting, showOnPages: e.target.checked },
-                        })
-                      }
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-slate-700">Static Pages</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editingSlot.targeting.showOnCategories}
-                      onChange={(e) =>
-                        setEditingSlot({
-                          ...editingSlot,
-                          targeting: { ...editingSlot.targeting, showOnCategories: e.target.checked },
-                        })
-                      }
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-slate-700">Categories & Archives</span>
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Status</label>
+                  <select
+                    value={editingAd.enabled ? 'true' : 'false'}
+                    onChange={(e) => setEditingAd({ ...editingAd, enabled: e.target.value === 'true' })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 font-medium"
+                  >
+                    <option value="true">Enabled (Serving)</option>
+                    <option value="false">Disabled (Paused)</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-1.5 pt-3">
-                <label className="font-bold text-slate-700">Administrative Notes</label>
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700">Internal Notes / Description</label>
                 <input
                   type="text"
-                  value={editingSlot.notes || ''}
-                  onChange={(e) => setEditingSlot({ ...editingSlot, notes: e.target.value })}
-                  placeholder="Internal notes regarding sponsor or campaign..."
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500"
+                  value={editingAd.notes || ''}
+                  onChange={(e) => setEditingAd({ ...editingAd, notes: e.target.value })}
+                  placeholder="e.g. Q4 Sponsor campaign banner"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-blue-500 text-xs"
                 />
               </div>
             </div>
@@ -611,17 +735,17 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setEditingSlot(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700"
+                onClick={() => setEditingAd(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => handleSaveSlot(editingSlot)}
-                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                onClick={() => handleSaveAdModal(editingAd)}
+                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
               >
-                Save Ad Slot
+                Save Ad Inserter Block
               </button>
             </div>
           </div>

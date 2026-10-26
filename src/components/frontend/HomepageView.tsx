@@ -1,7 +1,8 @@
 import React from 'react';
-import { Post, Category, HomepageSection, ThemeSettings, HeroSectionConfig, Author } from '../../types/cms';
+import { Post, Category, HomepageSection, ThemeSettings, HeroSectionConfig, Author, SiteSettings } from '../../types/cms';
 import { HeroSection } from './HeroSection';
 import { PostCardImage } from '../common/PostCardImage';
+import { AdSlotRenderer } from '../common/AdSlotRenderer';
 import {
   Clock,
   User,
@@ -20,6 +21,7 @@ interface Props {
   sections: HomepageSection[];
   heroConfig?: HeroSectionConfig;
   themeSettings: ThemeSettings;
+  siteSettings?: SiteSettings;
   currentPage?: number;
   postsPerPage?: number;
   authors?: Author[];
@@ -35,6 +37,7 @@ export const HomepageView: React.FC<Props> = ({
   sections,
   heroConfig,
   themeSettings,
+  siteSettings,
   currentPage = 1,
   postsPerPage = 6,
   authors = [],
@@ -103,49 +106,71 @@ export const HomepageView: React.FC<Props> = ({
         {/* Post Grid */}
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {displayPosts.map((post) => (
-              <article
-                key={post.id}
-                onClick={() => onSelectPost(post)}
-                className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center"
-              >
-                <div className="w-full sm:w-44 aspect-16/10 sm:aspect-square sm:h-32 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
-                  <PostCardImage
-                    src={post.featuredImage}
-                    alt={post.title}
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                    fallbackCategory={post.category}
-                    fallbackIcon={<Sparkles className="h-6 w-6 mb-1 opacity-40 text-blue-500" />}
-                  />
-                </div>
-
-                <div className="flex-1 flex flex-col justify-between space-y-2 w-full">
-                  <div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                      <span className="font-bold text-blue-600">{post.category}</span>
-                      <span>•</span>
-                      <span>{post.readingTime} min read</span>
+            {displayPosts.map((post, postIdx) => {
+              const cardInterval = siteSettings?.adsSettings?.homepageAdsConfig?.betweenPostCards?.cardInterval ?? 2;
+              return (
+                <React.Fragment key={post.id}>
+                  {postIdx === cardInterval && (
+                    <div className="col-span-1 md:col-span-2">
+                      <AdSlotRenderer
+                        placement="homepage_between_post_cards"
+                        siteSettings={siteSettings}
+                        contentType="homepage"
+                        className="my-2"
+                      />
                     </div>
-                    <h3 className="font-bold text-base text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
-                      {post.title}
-                    </h3>
-                  </div>
+                  )}
+                  <article
+                    onClick={() => onSelectPost(post)}
+                    className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center"
+                  >
+                    <div className="w-full sm:w-44 aspect-16/10 sm:aspect-square sm:h-32 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
+                      <PostCardImage
+                        src={post.featuredImage}
+                        alt={post.title}
+                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                        fallbackCategory={post.category}
+                        fallbackIcon={<Sparkles className="h-6 w-6 mb-1 opacity-40 text-blue-500" />}
+                      />
+                    </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
-                    <a
-                      href={`/author/${resolveAuthor(post.author).slug}/`}
-                      onClick={(e) => handleAuthorClick(e, post.author)}
-                      className="hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs font-medium text-slate-700"
-                      aria-label={`View articles by ${post.author}`}
-                    >
-                      {post.author}
-                    </a>
-                    <span>{new Date(post.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                  </div>
-                </div>
-              </article>
-            ))}
+                    <div className="flex-1 flex flex-col justify-between space-y-2 w-full">
+                      <div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                          <span className="font-bold text-blue-600">{post.category}</span>
+                          <span>•</span>
+                          <span>{post.readingTime} min read</span>
+                        </div>
+                        <h3 className="font-bold text-base text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
+                          {post.title}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
+                        <a
+                          href={`/author/${resolveAuthor(post.author).slug}/`}
+                          onClick={(e) => handleAuthorClick(e, post.author)}
+                          className="hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs font-medium text-slate-700"
+                          aria-label={`View articles by ${post.author}`}
+                        >
+                          {post.author}
+                        </a>
+                        <span>{new Date(post.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+                    </div>
+                  </article>
+                </React.Fragment>
+              );
+            })}
           </div>
+
+          {/* Ad Before Footer on Paginated View */}
+          <AdSlotRenderer
+            placement="before_footer"
+            siteSettings={siteSettings}
+            contentType="homepage"
+            className="my-8"
+          />
 
           {/* Homepage Pagination Controls */}
           {totalPages > 1 && (
@@ -216,109 +241,129 @@ export const HomepageView: React.FC<Props> = ({
 
   return (
     <div className="space-y-16 pb-16">
-      {/* 1. Fully Editable Hero Section (Placed Above Featured Post Section) */}
+      {/* 1. Placement: Above Hero */}
+      <AdSlotRenderer
+        placement="homepage_above_hero"
+        siteSettings={siteSettings}
+        contentType="homepage"
+        className="mb-4"
+      />
+
+      {/* Hero Section */}
       {heroConfig && heroConfig.enabled && (
         <HeroSection config={heroConfig} onNavigate={onNavigate} />
       )}
 
-      {sortedSections.map((section) => {
+      {/* 2. Placement: Below Hero */}
+      <AdSlotRenderer
+        placement="homepage_below_hero"
+        siteSettings={siteSettings}
+        contentType="homepage"
+        className="my-6"
+      />
+
+      {sortedSections.map((section, sectionIdx) => {
         if (!section.enabled) return null;
+
+        let sectionContent: React.ReactNode = null;
 
         switch (section.type) {
           case 'hero':
             // If the customizable HeroSection is active above, skip the legacy hero section to avoid duplicate heroes
-            if (heroConfig && heroConfig.enabled) return null;
-            if (!heroPost) return null;
-            return (
-              <section key={section.id} className="relative pt-6">
-                <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl">
-                  {/* Background cover image with gradient overlay */}
-                  <div className="absolute inset-0 z-0">
-                    <PostCardImage
-                      src={
-                        heroPost.featuredImage ||
-                        'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1600&q=80'
-                      }
-                      alt={heroPost.title}
-                      className="w-full h-full object-cover opacity-25 scale-105 transition-transform duration-700 hover:scale-100"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
-                  </div>
-
-                  <div className="relative z-10 p-6 sm:p-10 md:p-16 max-w-4xl space-y-6">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span
-                        style={{ backgroundColor: 'var(--ap-primary)' }}
-                        className="text-xs uppercase font-extrabold tracking-wider text-white px-3 py-1 rounded-full shadow-xs"
-                      >
-                        {heroPost.category}
-                      </span>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-300 font-medium bg-white/10 backdrop-blur-md px-3 py-1 rounded-full">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>{heroPost.readingTime} min read</span>
-                      </div>
-                      <span className="text-xs text-amber-400 font-semibold flex items-center gap-1">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        <span>Featured Story</span>
-                      </span>
+            if (heroConfig && heroConfig.enabled) {
+              sectionContent = null;
+            } else if (heroPost) {
+              sectionContent = (
+                <section key={section.id} className="relative pt-6">
+                  <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl">
+                    <div className="absolute inset-0 z-0">
+                      <PostCardImage
+                        src={
+                          heroPost.featuredImage ||
+                          'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1600&q=80'
+                        }
+                        alt={heroPost.title}
+                        className="w-full h-full object-cover opacity-25 scale-105 transition-transform duration-700 hover:scale-100"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
                     </div>
 
-                    <h1
-                      onClick={() => onSelectPost(heroPost)}
-                      className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight cursor-pointer hover:text-blue-300 transition-colors font-serif-custom"
-                    >
-                      {heroPost.title}
-                    </h1>
-
-                    <p className="text-sm sm:text-base md:text-lg text-slate-300 leading-relaxed line-clamp-3">
-                      {heroPost.excerpt}
-                    </p>
-
-                    <div className="pt-2 flex flex-wrap items-center justify-between gap-4 border-t border-white/10">
-                      <div className="flex items-center gap-3">
-                        <a
-                          href={`/author/${resolveAuthor(heroPost.author).slug}/`}
-                          onClick={(e) => handleAuthorClick(e, heroPost.author)}
-                          className="shrink-0 group focus:outline-hidden focus:ring-2 focus:ring-blue-400 rounded-full"
-                          aria-label={`View profile of ${heroPost.author}`}
+                    <div className="relative z-10 p-6 sm:p-10 md:p-16 max-w-4xl space-y-6">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span
+                          style={{ backgroundColor: 'var(--ap-primary)' }}
+                          className="text-xs uppercase font-extrabold tracking-wider text-white px-3 py-1 rounded-full shadow-xs"
                         >
-                          <img
-                            src={resolveAuthor(heroPost.author).avatar}
-                            alt={heroPost.author}
-                            className="h-10 w-10 rounded-full object-cover ring-2 ring-white/20 group-hover:ring-blue-400 transition-all"
-                          />
-                        </a>
-                        <div>
+                          {heroPost.category}
+                        </span>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-300 font-medium bg-white/10 backdrop-blur-md px-3 py-1 rounded-full">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{heroPost.readingTime} min read</span>
+                        </div>
+                        <span className="text-xs text-amber-400 font-semibold flex items-center gap-1">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          <span>Featured Story</span>
+                        </span>
+                      </div>
+
+                      <h1
+                        onClick={() => onSelectPost(heroPost)}
+                        className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight cursor-pointer hover:text-blue-300 transition-colors font-serif-custom"
+                      >
+                        {heroPost.title}
+                      </h1>
+
+                      <p className="text-sm sm:text-base md:text-lg text-slate-300 leading-relaxed line-clamp-3">
+                        {heroPost.excerpt}
+                      </p>
+
+                      <div className="pt-2 flex flex-wrap items-center justify-between gap-4 border-t border-white/10">
+                        <div className="flex items-center gap-3">
                           <a
                             href={`/author/${resolveAuthor(heroPost.author).slug}/`}
                             onClick={(e) => handleAuthorClick(e, heroPost.author)}
-                            className="block text-sm font-bold text-white hover:text-blue-300 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-400 rounded-xs"
-                            aria-label={`View articles by ${heroPost.author}`}
+                            className="shrink-0 group focus:outline-hidden focus:ring-2 focus:ring-blue-400 rounded-full"
+                            aria-label={`View profile of ${heroPost.author}`}
                           >
-                            {heroPost.author}
+                            <img
+                              src={resolveAuthor(heroPost.author).avatar}
+                              alt={heroPost.author}
+                              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/20 group-hover:ring-blue-400 transition-all"
+                            />
                           </a>
-                          <span className="text-xs text-slate-400">
-                            {new Date(heroPost.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
-                          </span>
+                          <div>
+                            <a
+                              href={`/author/${resolveAuthor(heroPost.author).slug}/`}
+                              onClick={(e) => handleAuthorClick(e, heroPost.author)}
+                              className="block text-sm font-bold text-white hover:text-blue-300 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-400 rounded-xs"
+                              aria-label={`View articles by ${heroPost.author}`}
+                            >
+                              {heroPost.author}
+                            </a>
+                            <span className="text-xs text-slate-400">
+                              {new Date(heroPost.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      <button
-                        onClick={() => onSelectPost(heroPost)}
-                        style={{ backgroundColor: 'var(--ap-primary)' }}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white hover:opacity-95 transition-all shadow-md"
-                      >
-                        <span>Read Full Story</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
+                        <button
+                          onClick={() => onSelectPost(heroPost)}
+                          style={{ backgroundColor: 'var(--ap-primary)' }}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white hover:opacity-95 transition-all shadow-md"
+                        >
+                          <span>Read Full Story</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </section>
-            );
+                </section>
+              );
+            }
+            break;
 
           case 'category-showcase':
-            return (
+            sectionContent = (
               <section key={section.id} className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -355,11 +400,20 @@ export const HomepageView: React.FC<Props> = ({
                     );
                   })}
                 </div>
+
+                {/* Placement: Between Category & Featured Sections */}
+                <AdSlotRenderer
+                  placement="homepage_between_category_sections"
+                  siteSettings={siteSettings}
+                  contentType="homepage"
+                  className="pt-4"
+                />
               </section>
             );
+            break;
 
           case 'featured-grid':
-            return (
+            sectionContent = (
               <section key={section.id} className="space-y-6">
                 <div>
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
@@ -374,7 +428,7 @@ export const HomepageView: React.FC<Props> = ({
                   )}
                 </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {featuredPosts.map((post) => (
                     <article
                       key={post.id}
@@ -428,9 +482,10 @@ export const HomepageView: React.FC<Props> = ({
                 </div>
               </section>
             );
+            break;
 
           case 'latest-posts':
-            return (
+            sectionContent = (
               <section key={section.id} className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -449,48 +504,62 @@ export const HomepageView: React.FC<Props> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {displayPosts.map((post) => (
-                    <article
-                      key={post.id}
-                      onClick={() => onSelectPost(post)}
-                      className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center"
-                    >
-                      <div className="w-full sm:w-44 aspect-16/10 sm:aspect-square sm:h-32 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
-                        <PostCardImage
-                          src={post.featuredImage}
-                          alt={post.title}
-                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                          fallbackCategory={post.category}
-                          fallbackIcon={<Sparkles className="h-6 w-6 mb-1 opacity-40 text-blue-500" />}
-                        />
-                      </div>
-
-                      <div className="flex-1 flex flex-col justify-between space-y-2 w-full">
-                        <div>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                            <span className="font-bold text-blue-600">{post.category}</span>
-                            <span>•</span>
-                            <span>{post.readingTime} min read</span>
+                  {displayPosts.map((post, postIdx) => {
+                    const cardInterval = siteSettings?.adsSettings?.homepageAdsConfig?.betweenPostCards?.cardInterval ?? 2;
+                    return (
+                      <React.Fragment key={post.id}>
+                        {postIdx === cardInterval && (
+                          <div className="col-span-1 md:col-span-2">
+                            <AdSlotRenderer
+                              placement="homepage_between_post_cards"
+                              siteSettings={siteSettings}
+                              contentType="homepage"
+                              className="my-2"
+                            />
                           </div>
-                          <h3 className="font-bold text-base text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
-                            {post.title}
-                          </h3>
-                        </div>
+                        )}
+                        <article
+                          onClick={() => onSelectPost(post)}
+                          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center"
+                        >
+                          <div className="w-full sm:w-44 aspect-16/10 sm:aspect-square sm:h-32 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
+                            <PostCardImage
+                              src={post.featuredImage}
+                              alt={post.title}
+                              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                              fallbackCategory={post.category}
+                              fallbackIcon={<Sparkles className="h-6 w-6 mb-1 opacity-40 text-blue-500" />}
+                            />
+                          </div>
 
-                        <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
-                          <a
-                            href={`/author/${resolveAuthor(post.author).slug}/`}
-                            onClick={(e) => handleAuthorClick(e, post.author)}
-                            className="hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs font-medium text-slate-700"
-                            aria-label={`View articles by ${post.author}`}
-                          >
-                            {post.author}
-                          </a>
-                          <span>{new Date(post.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                          <div className="flex-1 flex flex-col justify-between space-y-2 w-full">
+                            <div>
+                              <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                                <span className="font-bold text-blue-600">{post.category}</span>
+                                <span>•</span>
+                                <span>{post.readingTime} min read</span>
+                              </div>
+                              <h3 className="font-bold text-base text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
+                                {post.title}
+                              </h3>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
+                              <a
+                                href={`/author/${resolveAuthor(post.author).slug}/`}
+                                onClick={(e) => handleAuthorClick(e, post.author)}
+                                className="hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs font-medium text-slate-700"
+                                aria-label={`View articles by ${post.author}`}
+                              >
+                                {post.author}
+                              </a>
+                              <span>{new Date(post.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            </div>
+                          </div>
+                        </article>
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
 
                 {/* Homepage Pagination Controls */}
@@ -557,15 +626,39 @@ export const HomepageView: React.FC<Props> = ({
                 )}
               </section>
             );
-
-          case 'newsletter':
-          case 'cta':
-            return null;
+            break;
 
           default:
-            return null;
+            sectionContent = null;
         }
+
+        if (!sectionContent) return null;
+
+        return (
+          <React.Fragment key={section.id}>
+            {sectionContent}
+
+            {/* 3. Placement: Between Homepage Sections */}
+            {sectionIdx < sortedSections.length - 1 && (
+              <AdSlotRenderer
+                placement="between_homepage_sections"
+                siteSettings={siteSettings}
+                contentType="homepage"
+                sectionId={section.id}
+                className="my-10"
+              />
+            )}
+          </React.Fragment>
+        );
       })}
+
+      {/* 6. Placement: Before Footer */}
+      <AdSlotRenderer
+        placement="before_footer"
+        siteSettings={siteSettings}
+        contentType="homepage"
+        className="mt-12"
+      />
     </div>
   );
 };

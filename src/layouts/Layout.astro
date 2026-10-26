@@ -8,12 +8,25 @@ import '../index.css';
 import siteSettingsJson from '../data/siteSettings.json';
 
 const siteSettings: any = (siteSettingsJson as any) || {};
+const adsSettings = siteSettings.adsSettings || { adsEnabled: true, publisherId: '', autoAdsEnabled: false };
 const scriptsSettings = siteSettings.scriptsSettings || { integrations: [], consentBanner: { enabled: true, noticeText: '', privacyPolicyUrl: '/privacy-policy/' } };
-const activeIntegrations = (scriptsSettings.integrations || []).filter((i: any) => i.enabled && i.configValue);
-const adsenseIntegration = activeIntegrations.find((i: any) => i.providerKey === 'adsense');
+const activeIntegrations = (scriptsSettings.integrations || []).filter((i: any) => i.enabled && i.configValue && i.configValue.trim());
+
+// Deduplicated AdSense publisher ID: check scripts integration or adsSettings.publisherId
+const resolvedAdsensePubId = (
+  activeIntegrations.find((i: any) => i.providerKey === 'adsense')?.configValue ||
+  (adsSettings.adsEnabled ? adsSettings.publisherId : '')
+)?.trim();
+const shouldLoadAdsense = adsSettings.adsEnabled && !!resolvedAdsensePubId;
+
 const ga4Integration = activeIntegrations.find((i: any) => i.providerKey === 'ga4');
 const gtmIntegration = activeIntegrations.find((i: any) => i.providerKey === 'gtm');
+const metaPixelIntegration = activeIntegrations.find((i: any) => i.providerKey === 'metaPixel');
 const verificationIntegration = activeIntegrations.find((i: any) => i.providerKey === 'verification');
+const customHeadIntegrations = activeIntegrations.filter((i: any) => i.placement === 'head' && i.providerKey === 'customHead');
+const bodyStartIntegrations = activeIntegrations.filter((i: any) => i.placement === 'body-start' || i.providerKey === 'bodyStart');
+const bodyEndIntegrations = activeIntegrations.filter((i: any) => i.placement === 'body-end' || i.providerKey === 'bodyEnd');
+
 const consentEnabled = scriptsSettings.consentBanner?.enabled !== false;
 const consentNotice = scriptsSettings.consentBanner?.noticeText || 'We use cookies and similar technologies to enhance your experience, analyze site traffic, and serve personalized advertisements.';
 const privacyUrl = scriptsSettings.consentBanner?.privacyPolicyUrl || '/privacy-policy/';
@@ -179,13 +192,39 @@ const defaultSchemaGraph = schemaData || {
     <script is:inline>
       (function() {
         try {
+          var noopSig = function() { return function(type) { return type; }; };
+          var noopReg = function(type) { return type; };
+          window.$RefreshReg$ = noopReg;
+          window.$RefreshSig$ = noopSig;
+          window.RefreshRuntime = {
+            injectIntoGlobalHook: function() {},
+            register: noopReg,
+            createSignatureFunctionForTransform: noopSig,
+            registerExportsForReactRefresh: function() {},
+            validateRefreshBoundaryAndEnqueueUpdate: function() {},
+            performReactRefresh: function() {},
+            isLikelyComponentType: function() { return true; },
+            setSignature: function() {},
+            collectCustomHooksForSignature: function() {},
+            getFamilyByType: function() {},
+            getFamilyByID: function() {},
+            hasUnrecoverableErrors: function() { return false; },
+            __hmr_import: function() { return Promise.resolve({}); }
+          };
+
           // 1. Capture and suppress unhandled extension/sandbox errors in capturing phase
           window.addEventListener('error', function(event) {
             var msg = (event && (event.message || (event.error && (event.error.message || event.error.stack)))) || '';
             var file = (event && (event.filename || '')) || '';
             if (
-              (typeof msg === 'string' && msg.indexOf('Cannot set property fetch') !== -1) ||
-              (typeof file === 'string' && file.indexOf('chrome-extension://') !== -1)
+              (typeof msg === 'string' && (
+                msg.indexOf('Cannot set property fetch') !== -1 ||
+                msg.indexOf('before-hydration') !== -1
+              )) ||
+              (typeof file === 'string' && (
+                file.indexOf('chrome-extension://') !== -1 ||
+                file.indexOf('before-hydration') !== -1
+              ))
             ) {
               if (event.preventDefault) event.preventDefault();
               if (event.stopImmediatePropagation) event.stopImmediatePropagation();
@@ -199,7 +238,8 @@ const defaultSchemaGraph = schemaData || {
             if (
               typeof msg === 'string' && (
                 msg.indexOf('Cannot set property fetch') !== -1 ||
-                msg.indexOf('chrome-extension://') !== -1
+                msg.indexOf('chrome-extension://') !== -1 ||
+                msg.indexOf('before-hydration') !== -1
               )
             ) {
               if (event.preventDefault) event.preventDefault();
@@ -324,8 +364,8 @@ const defaultSchemaGraph = schemaData || {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <script type="application/ld+json" id="astropress-schema" set:html={JSON.stringify(defaultSchemaGraph, null, 2)} />
-    {adsenseIntegration && (
-      <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseIntegration.configValue}`} crossorigin="anonymous"></script>
+    {shouldLoadAdsense && (
+      <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${resolvedAdsensePubId}`} crossorigin="anonymous"></script>
     )}
     {ga4Integration && (
       <>
@@ -347,11 +387,34 @@ const defaultSchemaGraph = schemaData || {
         })(window,document,'script','dataLayer',gtmId);
       </script>
     )}
+    {metaPixelIntegration && (
+      <script is:inline define:vars={{ pixelId: metaPixelIntegration.configValue }}>
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', pixelId);
+        fbq('track', 'PageView');
+      </script>
+    )}
     {verificationIntegration && (
       <meta name="google-site-verification" content={verificationIntegration.configValue.replace('google-site-verification=', '')} />
     )}
+    {customHeadIntegrations.map((item: any) => (
+      <Fragment set:html={item.configValue} />
+    ))}
+    {siteSettings.customHeadCode && (
+      <Fragment set:html={siteSettings.customHeadCode} />
+    )}
   </head>
   <body class="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans" style={bodyStyle}>
+    {bodyStartIntegrations.map((item: any) => (
+      <Fragment set:html={item.configValue} />
+    ))}
     <slot />
     {consentEnabled && (
       <div id="astropress-consent-banner" class="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md text-white p-4 shadow-2xl border-t border-slate-800 hidden">
@@ -393,6 +456,12 @@ const defaultSchemaGraph = schemaData || {
           }
         });
       </script>
+    )}
+    {bodyEndIntegrations.map((item: any) => (
+      <Fragment set:html={item.configValue} />
+    ))}
+    {siteSettings.customFooterCode && (
+      <Fragment set:html={siteSettings.customFooterCode} />
     )}
   </body>
 </html>

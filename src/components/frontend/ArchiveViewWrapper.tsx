@@ -1,11 +1,12 @@
 import React from 'react';
 import { ArchiveView } from './ArchiveView';
-import { Post, Category, Tag } from '../../types/cms';
+import { Post, Category, Tag, SiteSettings } from '../../types/cms';
 
 interface WrapperProps {
   type: 'category' | 'tag';
   item: Category | Tag;
   posts: Post[];
+  siteSettings?: SiteSettings;
   permalinkStructure?: string;
 }
 

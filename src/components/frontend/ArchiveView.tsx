@@ -1,12 +1,14 @@
 import React from 'react';
-import { Post, Category, Tag, Author } from '../../types/cms';
+import { Post, Category, Tag, Author, SiteSettings } from '../../types/cms';
 import { PostCardImage } from '../common/PostCardImage';
+import { AdSlotRenderer } from '../common/AdSlotRenderer';
 import { ArrowLeft, Clock, ArrowRight, FolderTree, Tag as TagIcon } from 'lucide-react';
 
 interface Props {
   type: 'category' | 'tag';
   item: Category | Tag;
   posts: Post[];
+  siteSettings?: SiteSettings;
   onBack: () => void;
   onSelectPost: (post: Post) => void;
   onSelectAuthor?: (author: Author) => void;
@@ -16,6 +18,7 @@ export const ArchiveView: React.FC<Props> = ({
   type,
   item,
   posts,
+  siteSettings,
   onBack,
   onSelectPost,
   onSelectAuthor,
@@ -41,7 +44,7 @@ export const ArchiveView: React.FC<Props> = ({
     <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 font-sans">
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors mb-6"
+        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors mb-6 cursor-pointer"
       >
         <ArrowLeft className="h-4 w-4" />
         <span>Back to Home</span>
@@ -73,77 +76,96 @@ export const ArchiveView: React.FC<Props> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredPosts.map((post) => (
-            <article
-              key={post.id}
-              onClick={() => onSelectPost(post)}
-              className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-            >
-              <div className="space-y-3">
-                <div className="aspect-16/10 w-full rounded-xl overflow-hidden bg-slate-100 relative shrink-0">
-                  <PostCardImage
-                    src={post.featuredImage}
-                    alt={post.title}
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                    fallbackCategory={post.category}
+          {filteredPosts.map((post, postIdx) => (
+            <React.Fragment key={post.id}>
+              {postIdx === 2 && (
+                <div className="col-span-1 md:col-span-2">
+                  <AdSlotRenderer
+                    placement="between_archive_items"
+                    siteSettings={siteSettings}
+                    contentType="category"
+                    className="my-2"
                   />
-                  <span className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-xs text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs">
-                    {post.category}
+                </div>
+              )}
+              <article
+                onClick={() => onSelectPost(post)}
+                className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-3">
+                  <div className="aspect-16/10 w-full rounded-xl overflow-hidden bg-slate-100 relative shrink-0">
+                    <PostCardImage
+                      src={post.featuredImage}
+                      alt={post.title}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                      fallbackCategory={post.category}
+                    />
+                    <span className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-xs text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs">
+                      {post.category}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span>{new Date(post.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {post.readingTime} min
+                    </span>
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
+                    {post.title}
+                  </h3>
+
+                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                    {post.excerpt}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400">By</span>
+                    <a
+                      href={`/author/${(post.author || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onSelectAuthor && post.author) {
+                          e.preventDefault();
+                          onSelectAuthor({
+                            id: `auth-${post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                            name: post.author,
+                            slug: post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                            role: 'Author',
+                            email: `${post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-')}@astropress.local`,
+                            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+                            bio: '',
+                          });
+                        }
+                      }}
+                      className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs"
+                      aria-label={`View articles by ${post.author}`}
+                    >
+                      {post.author}
+                    </a>
+                  </div>
+                  <span className="text-blue-600 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                    Read <ArrowRight className="h-3.5 w-3.5" />
                   </span>
                 </div>
-
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span>{new Date(post.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {post.readingTime} min
-                  </span>
-                </div>
-
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
-                  {post.title}
-                </h3>
-
-                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                  {post.excerpt}
-                </p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400">By</span>
-                  <a
-                    href={`/author/${(post.author || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onSelectAuthor && post.author) {
-                        e.preventDefault();
-                        onSelectAuthor({
-                          id: `auth-${post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                          name: post.author,
-                          slug: post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-                          role: 'Author',
-                          email: `${post.author.toLowerCase().replace(/[^a-z0-9]+/g, '-')}@astropress.local`,
-                          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-                          bio: '',
-                        });
-                      }
-                    }}
-                    className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 rounded-xs"
-                    aria-label={`View articles by ${post.author}`}
-                  >
-                    {post.author}
-                  </a>
-                </div>
-                <span className="text-blue-600 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-                  Read <ArrowRight className="h-3.5 w-3.5" />
-                </span>
-              </div>
-            </article>
+              </article>
+            </React.Fragment>
           ))}
         </div>
       )}
+
+      {/* Ad Placement: Before Footer */}
+      <AdSlotRenderer
+        placement="before_footer"
+        siteSettings={siteSettings}
+        contentType="category"
+        className="mt-12"
+      />
     </div>
   );
 };

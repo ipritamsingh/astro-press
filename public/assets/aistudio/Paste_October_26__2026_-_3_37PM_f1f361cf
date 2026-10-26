@@ -1,0 +1,832 @@
+ASTROPRESS — COMPLETE ADS MANAGER REBUILD
+
+Google AI Studio Implementation Prompt
+
+ROLE
+
+Act as a senior full-stack engineer, Astro specialist, React/TypeScript developer, Cloudflare Pages/D1 architect, security engineer, and QA tester.
+
+You are working directly inside the existing AstroPress GitHub-connected project.
+
+Your task is to completely replace the current complicated Ads Management implementation with a simple, reliable, WordPress Ad Inserter-style Ads Manager.
+
+Do not merely describe the solution. Inspect the existing project, implement the complete feature, test it, fix discovered defects, and provide an accurate final report.
+
+---
+
+1. PRIMARY OBJECTIVE
+
+Replace the existing Ads Management system with ONE simple admin section named:
+
+Ads Manager / Ad Inserter
+
+The administrator must be able to:
+
+1. Create unlimited ad configurations, subject to reasonable system limits.
+2. Paste an ad unit code once.
+3. Select multiple page types where the same ad should appear.
+4. Select multiple placement positions within each selected page type.
+5. Save and independently enable or disable each ad.
+6. Enable or disable all site advertisements with one global toggle.
+7. Preview demo ads at the actual registered positions.
+8. Edit, duplicate, reorder, and delete saved ads.
+9. Control homepage placements, article placements, static pages, category/archive pages, sidebars, and footer positions from the same interface.
+10. Verify whether each configured placement is actually connected to a working frontend renderer.
+
+The interface must be easy to understand on a mobile phone and desktop.
+
+Do not recreate the previously complicated interface with multiple confusing tabs, separate placement simulators, independent homepage configuration systems, duplicated settings, and unnecessary advanced controls.
+
+Use one primary Ads Manager screen with a clear workflow.
+
+---
+
+2. STRICT FIRST STEP: AUDIT THE EXISTING ADS IMPLEMENTATION
+
+Before editing code, inspect the complete current implementation.
+
+Inspect at minimum:
+
+- src/types/cms.ts
+- src/data/initialData.ts
+- src/data/siteSettings.json
+- src/data/cmsStore.ts
+- src/components/admin/AdsManager.tsx
+- src/components/common/AdSlotRenderer.tsx
+- src/components/admin/DemoAdStudio.tsx, if present
+- src/components/admin/PlacementPreviewSimulator.tsx, if present
+- src/components/frontend/HomepageView.tsx
+- src/components/frontend/SinglePostView.tsx
+- src/components/frontend/SinglePageView.tsx
+- src/components/frontend/ArchiveView.tsx
+- src/layouts/Layout.astro
+- src/App.tsx
+- all registered ad placement definitions
+- existing content-type routing and admin persistence
+- any other files that read, write, or render ad configuration
+
+Search the entire repository for old ad configuration types, homepage-specific ad settings, demo mode logic, ad slot providers, placement IDs, AdSense script injection, third-party code execution, old preview tools, and duplicate ad renderers.
+
+Do not assume the example paths above contain all relevant files. Follow actual imports and data flows.
+
+Create a complete dependency map before removing anything.
+
+Then implement the replacement in the same task. Do not stop after the audit.
+
+---
+
+3. REMOVE THE PREVIOUS COMPLICATED ADS SYSTEM
+
+Remove the old Ads Management implementation that conflicts with the new unified system, including obsolete versions of:
+
+- Separate Homepage Ads Control and its independent settings model.
+- The old Demo Ad Studio and its separate code-export workflow, if redundant.
+- The old Placement Preview Simulator and diagnostic UI, if redundant.
+- Old independent placement configuration models.
+- Duplicate ad configuration fields and duplicated global toggles.
+- Old provider dropdowns and slot-specific demo configuration forms that are incompatible with the new workflow.
+- Old rendering paths that can cause the same ad to appear twice.
+- Old settings that are no longer read by the replacement system.
+- Unused components, types, state, imports, and obsolete UI controls.
+
+IMPORTANT:
+
+Do not blindly delete files merely because they contain the word "Ads".
+
+First establish whether each file is used by other application features. Preserve shared functionality that is still needed.
+
+If an old file is exclusively part of the retired system and is no longer imported, remove it. Otherwise refactor it safely.
+
+Do not leave two competing Ads Managers active.
+
+Do not leave an old Homepage Ads Control silently overriding the new settings.
+
+Do not remove the actual frontend placement capability; replace its configuration and rendering integration.
+
+Do not delete user-created content, published posts, pages, categories, media, admin accounts, credentials, integrations, GitHub settings, Cloudflare configuration, or unrelated site settings.
+
+---
+
+4. NEW SIMPLE ADMIN INTERFACE
+
+Add or replace the existing Ads Manager entry in the admin sidebar.
+
+Use one primary screen with these sections:
+
+A. Global Advertisement Control
+
+At the top of the screen display:
+
+- Global Ads: ON/OFF.
+- Short explanation: "This switch controls all site advertisements."
+- Total configured ads.
+- Active ads.
+- Disabled ads.
+- Placement configuration status.
+
+Behavior:
+
+- When Global Ads is OFF, no ad units or demo ads may render anywhere on the site.
+- Do not load ad-provider scripts solely for disabled ad slots.
+- Turning Global Ads OFF must not delete or reset any saved ad configuration.
+- When switched ON again, previously enabled ads resume according to their saved rules.
+- The global toggle must be saved persistently and reflected in frontend rendering.
+
+The global toggle must be the single authoritative master control. Avoid multiple conflicting global switches.
+
+B. Add New Ad Button
+
+Provide a prominent button:
+
+"+ Add New Ad"
+
+Clicking it opens a simple form, preferably as a modal or a dedicated editor panel.
+
+Fields:
+
+1. Ad Name — required.
+2. Ad Unit Code — required.
+3. Optional internal description.
+4. Optional ad label for administration.
+5. Ad status — enabled or disabled.
+6. Display Locations — multiple selections.
+7. Placement positions — dependent on selected display locations.
+8. Device visibility — all devices, desktop only, tablet only, or mobile only, where supported.
+9. Optional slug inclusion/exclusion rules.
+10. Save Ad and Cancel buttons.
+
+Avoid unnecessary mandatory fields.
+
+Do not ask the user to create a separate ad slot before selecting where the ad should appear.
+
+The administrator must be able to paste the code first, choose display locations, select positions, and save.
+
+---
+
+5. AD CODE SUPPORT
+
+Support at least these ad configuration types:
+
+1. Google AdSense ad unit code.
+2. Custom banner image with destination URL.
+3. Trusted third-party ad embed/code, only through a controlled and secure rendering mechanism.
+4. Demo Ad for testing.
+
+The user should not have to understand internal provider architecture.
+
+Use a simple selector such as:
+
+- Google AdSense
+- Custom Image Banner
+- Trusted Embed
+- Demo Ad
+
+Google AdSense
+
+Allow the administrator to paste the complete official ad unit snippet, including the appropriate ad-unit markup and attributes.
+
+Support the standard responsive AdSense format.
+
+If the site already stores a publisher ID or loads the global AdSense library, reuse the existing verified integration where appropriate. Avoid injecting duplicate global AdSense scripts for every individual ad.
+
+Do not invent publisher IDs, ad unit IDs, or production credentials.
+
+Do not claim that a real ad will display unless the necessary publisher configuration, approval, ad unit configuration, and live-domain conditions are satisfied.
+
+Custom Image Banner
+
+Allow:
+
+- Image URL or selected media asset.
+- Destination URL.
+- Optional alt text.
+- Responsive width.
+- Optional maximum width.
+- Optional aspect ratio.
+
+Validate destination URLs and use safe link attributes.
+
+Trusted Embed / HTML
+
+Do not execute arbitrary HTML or JavaScript directly inside the Admin application.
+
+Treat saved code as untrusted until its type and origin have been validated.
+
+Prefer controlled rendering through a dedicated frontend component or an isolated sandboxed iframe with an explicit permissions policy.
+
+Do not permit arbitrary script access to the parent page, cookies, admin sessions, localStorage, or application state.
+
+If an ad format cannot be safely supported with the current architecture, display a clear validation message instead of silently executing unsafe code.
+
+Never bypass Content Security Policy or existing security protections just to make an ad render.
+
+---
+
+6. DISPLAY LOCATIONS: MULTIPLE SELECTIONS PER AD
+
+The same ad configuration must support multiple display locations simultaneously.
+
+Use checkboxes, not a single mutually exclusive dropdown.
+
+Required display-location groups:
+
+A. Homepage
+B. Single Posts / Articles
+C. Static Pages
+D. Categories / Archives / Tags
+E. Sidebar
+F. Global Footer / Site-wide locations, where supported
+
+Each selected group must reveal its own placement options underneath it.
+
+Selecting one group must not erase settings from another selected group.
+
+For example, if the administrator selects Homepage and Single Posts, both groups and their individual placement selections must remain visible and editable.
+
+An ad may be displayed in multiple positions on the same page type if explicitly selected. Prevent accidental duplicate rendering at the same placement.
+
+---
+
+7. HOMEPAGE PLACEMENT OPTIONS
+
+When Homepage is selected, display these configurable positions, based on the actual existing homepage structure:
+
+1. Before the Hero section.
+2. After the Hero section.
+3. Before the Category / Explore by Topic section.
+4. After the Category section.
+5. Before the Featured Posts section.
+6. After the Featured Posts section.
+7. Between homepage sections.
+8. Between post cards in a listing.
+9. Between Latest Posts / Dispatches items.
+10. Before the homepage footer.
+11. Any additional existing homepage section boundary discovered during the repository audit.
+
+Use understandable labels rather than exposing internal placement IDs as the primary UI.
+
+If the homepage uses different section names or order, map these controls to the real homepage component structure.
+
+Do not render ads at fictional positions that do not exist.
+
+For between-card ads, provide a simple insertion interval, for example:
+
+- After every 2 cards.
+- After every 3 cards.
+- After every 4 cards.
+- After every 6 cards.
+- Custom positive integer interval.
+
+The interval must be configurable per applicable placement.
+
+---
+
+8. SINGLE POST / ARTICLE PLACEMENT OPTIONS
+
+When Single Posts / Articles is selected, show the following options:
+
+1. Before the post title.
+2. After the post title and metadata.
+3. Before the introduction.
+4. After the introduction.
+5. Between article paragraphs.
+6. After selected article sections, where supported by the actual content structure.
+7. Before the conclusion.
+8. After the article content.
+9. Before related posts, if the template contains that section.
+10. Before the article footer.
+11. Sidebar, if the article layout contains a sidebar.
+
+For between-paragraph ads, allow the administrator to configure an insertion interval.
+
+Examples:
+
+- Every 2 paragraphs.
+- Every 3 paragraphs.
+- Every 4 paragraphs.
+- Every 5 paragraphs.
+- Custom interval.
+
+Requirements:
+
+- Insert ads only at safe content boundaries.
+- Do not split HTML elements or Gutenberg blocks.
+- Do not break React keys, Astro rendering, content formatting, links, tables, images, or code blocks.
+- Avoid inserting ads inside headings, captions, forms, or other inappropriate structural elements.
+- Do not insert an ad before and after every paragraph accidentally.
+- Ensure the ad is inserted only at the selected interval.
+- If the content is too short for the configured position, skip the unavailable placement without breaking the page.
+
+If selected-section targeting is not supported by the current content schema, implement a safe, clearly defined mechanism or omit the unsupported option with a documented reason. Do not show controls that have no actual renderer.
+
+---
+
+9. STATIC PAGE PLACEMENTS
+
+When Static Pages is selected, show:
+
+1. Before the page title.
+2. After the page title.
+3. Before page content.
+4. After page content.
+5. Before the page footer.
+6. Sidebar, if the page template supports it.
+
+Support optional page slug include/exclude rules.
+
+Allow the administrator to choose whether the ad applies to all eligible pages or only selected page slugs.
+
+Do not show homepage-specific controls in this section.
+
+---
+
+10. CATEGORIES / ARCHIVES / TAGS PLACEMENTS
+
+When Categories / Archives / Tags is selected, show:
+
+1. Before archive title.
+2. After archive title and description.
+3. Before listing items.
+4. Between listing cards.
+5. After listing items.
+6. Before archive footer.
+7. Sidebar, if supported.
+
+Allow an insertion interval for between-card advertisements.
+
+Use the actual ArchiveView or equivalent frontend implementation discovered in the project.
+
+Do not assume that all archives have identical layouts without checking the code.
+
+---
+
+11. SIDEBAR PLACEMENTS
+
+When Sidebar is selected, show:
+
+1. Before sidebar widgets.
+2. Between sidebar widgets, if supported.
+3. After sidebar widgets.
+4. Sticky sidebar, only where supported by the current layout.
+
+Allow desktop-only, mobile-only, or all-device visibility.
+
+Avoid creating empty sidebars or large blank areas when no active ad is configured.
+
+For sticky ads, respect viewport boundaries, page usability, and mobile behavior. Do not make the ad obscure article text or navigation.
+
+---
+
+12. GLOBAL FOOTER PLACEMENTS
+
+When the global footer or site-wide location is selected, provide only real registered locations, such as:
+
+- Before the site footer.
+- After the main content and before the footer.
+- After the footer, only if explicitly supported by the existing layout.
+
+Do not render the same ad twice if the same placement is configured under another display group.
+
+---
+
+13. SAVED ADS LIST
+
+Below the editor, show a simple list of all saved ads.
+
+Each ad row or card should contain:
+
+- Ad name.
+- Provider/type.
+- Selected display locations.
+- Selected placement names.
+- Enabled/disabled status.
+- Edit.
+- Duplicate.
+- Enable/disable.
+- Move up/down or reorder, if order affects the same placement.
+- Delete.
+
+Example:
+
+Ad #1 — Header Banner
+Locations: Homepage, Single Posts
+Positions: Below Hero, Before Post Title
+Status: Enabled
+
+Ad #2 — In-Article Ad
+Locations: Single Posts
+Positions: After Introduction, Every 3 Paragraphs
+Status: Enabled
+
+Ad #3 — Sidebar Banner
+Locations: Sidebar
+Positions: After Sidebar Widgets
+Status: Disabled
+
+The list must remain easy to use on mobile.
+
+Editing an ad must load its existing configuration without losing any selected positions.
+
+Duplicating an ad must create a new unique ID. Never reuse the original ID.
+
+Deleting an ad must require confirmation.
+
+Changing the order must persist only when order is meaningful. Avoid adding drag-and-drop complexity unless the existing UI already supports it reliably.
+
+---
+
+14. REAL FRONTEND RENDERING IS MANDATORY
+
+The new Admin controls must be connected to the actual frontend placement renderers.
+
+Saving a placement in the Admin must not merely change the interface or a preview.
+
+Inspect and update the actual relevant frontend components, including the existing versions of:
+
+- HomepageView.tsx
+- SinglePostView.tsx
+- SinglePageView.tsx
+- ArchiveView.tsx
+- Layout.astro
+- App.tsx
+- AdSlotRenderer.tsx, if reused after refactoring
+
+Add or update components as required by the real architecture.
+
+Create a central placement registry or an equivalent strongly typed system that maps the administrator's selected placement IDs to actual frontend insertion points.
+
+Requirements:
+
+1. Every available placement control must map to a real renderer.
+2. No placement may be marked as working if it is not wired to the frontend.
+3. A selected ad must render only at its selected positions.
+4. A disabled ad must not render.
+5. A globally disabled ads system must render no ads.
+6. Device targeting must be respected.
+7. Page targeting must be respected.
+8. Slug exclusions must be respected.
+9. A placement must not render the same ad twice at the same location.
+10. Missing or invalid ad configurations must fail safely without breaking the page.
+11. The absence of ads must not leave unnecessary blank containers.
+12. Frontend rendering must work on the actual published site, not only in Admin preview.
+
+Use the existing AstroPress state and data architecture where appropriate.
+
+Do not introduce a second competing database or unrelated state management system.
+
+---
+
+15. DEMO MODE AND PREVIEW
+
+Provide a simple Demo Mode control inside the same Ads Manager.
+
+When Demo Mode is enabled:
+
+- Display clearly labeled demo advertisements at the selected placements.
+- Use responsive demo ad designs for banner, rectangle, in-article, sidebar, and feed placements.
+- Show a visible label: "DEMO AD — NOT A REAL AD".
+- Include sample headline, description, optional image, and a non-misleading preview button.
+- Make the demo design visually distinct from real ads.
+- Never generate real ad clicks or real provider impressions.
+- Do not execute arbitrary user-supplied ad code merely because Demo Mode is enabled.
+- Demo Mode must work without a real AdSense publisher ID.
+
+The admin must be able to inspect the actual placement positions in the homepage, posts, pages, archives, and sidebar.
+
+Provide a button such as "Preview Demo Ads" that opens the actual website preview with demo ads displayed at the configured positions.
+
+The preview must use the same placement mapping and rendering rules as the frontend.
+
+It must not be a separate fake layout that ignores the actual frontend.
+
+If possible, provide a device preview selector for Desktop, Tablet, and Mobile. If a device preview is not technically available in the current architecture, implement responsive preview layouts and document the limitation.
+
+Demo Mode must never override the Global Ads OFF setting. If Global Ads is OFF, no ad or demo ad should render.
+
+When Demo Mode is disabled, demo ads must disappear without deleting the saved ad configurations.
+
+Never save demo content over real production ad configurations.
+
+---
+
+16. DATA MODEL AND PERSISTENCE
+
+Design one authoritative ad configuration model.
+
+Use stable unique IDs.
+
+A conceptual structure may resemble:
+
+AdConfiguration:
+
+- id
+- name
+- provider
+- adCode or provider-specific configuration
+- enabled
+- displayLocations
+- placementRules
+- deviceVisibility
+- slugIncludeRules
+- slugExcludeRules
+- createdAt
+- updatedAt
+- optional internal description
+
+PlacementRule:
+
+- locationGroup
+- placementId
+- insertionInterval, where applicable
+- enabled
+- display options supported by the actual placement
+
+GlobalAdSettings:
+
+- adsEnabled
+- demoModeEnabled
+- shared provider settings, if required
+
+This is a conceptual schema, not an instruction to duplicate existing types or create redundant state.
+
+Use the repository's actual TypeScript types, CMS store, D1 persistence, or existing durable settings mechanism.
+
+Inspect the current persistence architecture before implementing the model.
+
+Requirements:
+
+- Save and reload configurations correctly.
+- Preserve data across page refreshes and new admin sessions.
+- Avoid browser-local-only storage for production-critical configuration if the application uses server-side persistence.
+- Use migrations or safe backward-compatible normalization where necessary.
+- Handle old settings without crashing.
+- Ensure multiple ad configurations can coexist.
+- Validate imported or legacy configuration.
+- Avoid storing secrets or unnecessary sensitive information in client-side state.
+- Never overwrite the entire CMS configuration just to update an ad setting.
+- Use partial, validated updates when the existing architecture supports them.
+- Handle concurrent edits and persistence errors clearly.
+
+If a migration is needed, implement it safely and document what it changes.
+
+Do not reset production data to initial demo data.
+
+---
+
+17. SECURITY REQUIREMENTS
+
+Security is mandatory.
+
+1. Do not expose GitHub PATs, Cloudflare API tokens, Resend keys, or other server secrets.
+2. Do not add secrets to the frontend bundle or browser localStorage.
+3. Validate all ad configuration data before saving.
+4. Validate URLs and permitted provider formats.
+5. Prevent arbitrary HTML/JavaScript from executing inside the Admin interface.
+6. Do not use unsafe raw HTML rendering for untrusted strings.
+7. Use controlled rendering for supported ad code.
+8. Avoid script injection and DOM-based XSS.
+9. Do not bypass Content Security Policy.
+10. Preserve existing authentication, session validation, authorization, and admin permissions.
+11. Only authorized administrators may modify ad settings.
+12. Prevent unauthorized users from updating global ad status.
+13. Handle invalid or malformed configurations safely.
+14. Do not expose internal diagnostics, server errors, tokens, or secrets to public visitors.
+15. Avoid loading third-party advertising scripts when ads are globally disabled.
+16. Respect any existing consent-management behavior and applicable privacy controls.
+17. Do not silently enable real ads or Google Auto Ads as part of the migration.
+18. Preserve the existing AdSense publisher ID and integration settings only when already configured and valid.
+
+If the current architecture cannot safely execute a particular ad format, reject that format with a clear explanation instead of weakening security.
+
+---
+
+18. RESPONSIVE AND ACCESSIBLE UI
+
+The Admin must work on mobile and desktop.
+
+Use:
+
+- Clear labels.
+- Checkboxes for multiple display locations.
+- Expandable placement groups.
+- Visible save/cancel actions.
+- Clear enabled/disabled states.
+- Responsive forms and cards.
+- Confirmation before deletion.
+- Helpful validation messages.
+- Loading, saving, success, and error states.
+
+Avoid:
+
+- Excessive tabs.
+- Duplicate settings screens.
+- Deeply nested menus.
+- Unnecessary technical IDs.
+- Huge diagnostic panels in the normal workflow.
+- Horizontal scrolling on mobile.
+- Controls that appear clickable but do nothing.
+
+Keep the interface simple enough for a non-technical site administrator.
+
+---
+
+19. AUTOMATED AND MANUAL TESTING
+
+After implementation, test the system rather than merely claiming it works.
+
+Run the available project checks, such as:
+
+- npm run lint, if available.
+- npm run build.
+- Existing TypeScript checks.
+- Relevant unit or integration tests.
+- Applet compilation, if available in the current environment.
+
+Create or update tests for critical ad behavior where the project has a suitable testing framework.
+
+Test at least the following scenarios:
+
+Global controls
+
+- Global Ads OFF hides all ads.
+- Global Ads ON restores eligible enabled ads.
+- Turning Global Ads OFF does not delete settings.
+- Demo Mode cannot bypass Global Ads OFF.
+
+Ad management
+
+- Create an ad.
+- Save and reload.
+- Edit an ad.
+- Duplicate an ad.
+- Disable one ad without affecting other ads.
+- Delete an ad with confirmation.
+- Preserve multiple locations for one ad.
+- Preserve multiple positions in the same location.
+- Validate empty or invalid code.
+- Verify persistence after a refresh.
+
+Homepage
+
+- Test each implemented homepage placement.
+- Test between-card insertion intervals.
+- Ensure no duplicate rendering.
+- Ensure sections remain correctly ordered.
+
+Posts
+
+- Test before-title and after-metadata placements.
+- Test after-introduction and between-paragraph placements.
+- Test after-content and before-footer placements.
+- Verify content structure is not broken.
+
+Pages and archives
+
+- Test static page positions.
+- Test archive title and listing positions.
+- Test between-card intervals.
+- Test slug include/exclude rules.
+
+Sidebar and device visibility
+
+- Test supported sidebar positions.
+- Test desktop-only, mobile-only, and all-device rules.
+- Confirm unsupported layouts do not produce empty or broken containers.
+
+Demo Mode
+
+- Verify demo ads appear at selected actual placements.
+- Verify all demo ads are labeled clearly.
+- Verify real ad code is not executed in Demo Mode.
+- Verify disabling Demo Mode hides demo ads.
+
+Security
+
+- Confirm only authorized administrators can change ad settings.
+- Confirm secrets are not exposed in browser state.
+- Confirm untrusted code is not executed inside the Admin application.
+- Confirm invalid URLs and malformed configurations are handled safely.
+
+Fix the bugs discovered during testing.
+
+Do not report a test as passed unless it was actually executed and the result was observed.
+
+---
+
+20. PRODUCTION VERIFICATION
+
+Distinguish clearly between:
+
+1. TypeScript/lint checks.
+2. Local production build.
+3. GitHub commit or push.
+4. Cloudflare Pages build.
+5. Cloudflare deployment.
+6. Actual live-site verification.
+
+A successful local build does not prove that the live Cloudflare site works.
+
+Do not claim production success merely because the applet compiled.
+
+Do not automatically push, publish, or deploy unless explicitly authorized by the available workflow and user instructions.
+
+Do not change secrets, environment variables, GitHub authentication, Cloudflare credentials, or unrelated deployment settings.
+
+If live verification cannot be performed from the current environment, list the exact checks that still require a live deployment.
+
+---
+
+21. DOCUMENTATION
+
+Create or update a concise document:
+
+docs/ADS_MANAGER_GUIDE.md
+
+Explain in simple language:
+
+1. Where to open Ads Manager.
+2. How to add an ad.
+3. Where to paste the Ad Unit Code.
+4. How to select Homepage, Posts, Pages, Categories, Sidebar, and Footer.
+5. How to select multiple placements.
+6. How to set insertion intervals.
+7. How to enable or disable one ad.
+8. How to turn all ads ON/OFF.
+9. How to preview Demo Ads.
+10. How to troubleshoot an ad that does not appear.
+11. Which placements are actually supported.
+12. Which tests were executed and which production checks remain.
+
+Do not claim unsupported features in the guide.
+
+---
+
+22. FINAL ACCEPTANCE CRITERIA
+
+The task is complete only when:
+
+- The old conflicting Ads Manager controls have been removed or safely retired.
+- There is one clear Ads Manager entry in the admin sidebar.
+- The user can add multiple ads without a practical low limit.
+- Each ad can target multiple page types.
+- Each selected page type offers its own real placement options.
+- The same ad can render in multiple selected positions.
+- Per-ad enable/disable works.
+- Global ON/OFF works.
+- Demo Mode displays clearly labeled ads at actual configured placements.
+- Saved settings persist.
+- Homepage, post, page, archive, sidebar, and footer controls are connected to real renderers wherever those layouts support them.
+- No duplicate or conflicting ad rendering systems remain.
+- The UI is usable on mobile.
+- Security protections remain intact.
+- Build and available tests are executed.
+- Discovered defects are fixed.
+- Documentation is created.
+- The final report accurately separates verified results from unverified production behavior.
+
+---
+
+23. STRICT CHANGE CONTROL
+
+This is an implementation task, so modify the source files needed to complete the replacement.
+
+However:
+
+- Do not rewrite the entire AstroPress application.
+- Do not change unrelated site design or homepage content.
+- Do not modify unrelated CMS features.
+- Do not delete published content or media.
+- Do not change authentication, GitHub deployment, Cloudflare secrets, Resend, SEO, analytics, or unrelated integrations unless a directly necessary and explicitly explained dependency exists.
+- Do not create duplicate configuration systems.
+- Do not leave placeholder buttons or fake controls.
+- Do not silently discard existing ad settings.
+- Preserve compatible existing settings and migrate them safely where feasible.
+- If legacy settings cannot be migrated safely, preserve a recoverable copy using the existing project-appropriate backup mechanism and explain the limitation.
+- Do not invent test results.
+- Do not claim live deployment success without actual live verification.
+
+Before finishing, review every changed file and the relevant frontend data flow.
+
+---
+
+24. REQUIRED FINAL REPORT
+
+When the task is complete, report:
+
+1. What old Ads Management components and settings were removed or retired.
+2. What new unified Ads Manager was implemented.
+3. Which files were changed, created, or deleted.
+4. How global ON/OFF works.
+5. How one ad can target multiple page types and placements.
+6. Which actual frontend placements are connected.
+7. How Demo Mode and preview work.
+8. How settings are persisted and migrated.
+9. What security controls were preserved or added.
+10. Which lint, TypeScript, build, and automated tests actually passed or failed.
+11. Any defects discovered and fixed.
+12. Any limitations or unsupported placement points.
+13. Whether GitHub push, Cloudflare build, deployment, and live verification actually occurred.
+
+Do not simply say "Everything is complete." Provide verifiable details.
+
+Begin by auditing the current Ads Management implementation, then implement the replacement end to end and test it.

@@ -376,7 +376,7 @@ export interface SeoSocialProfiles {
 export interface AdSlot {
   id: string;
   name: string;
-  provider: 'adsense' | 'custom_image' | 'third_party';
+  provider: 'adsense' | 'custom_image' | 'third_party' | 'demo';
   adUnitId: string;
   format: 'auto' | 'responsive' | 'rectangle' | 'leaderboard' | 'skyscraper' | 'in-article';
   placement:
@@ -387,7 +387,11 @@ export interface AdSlot {
     | 'after_sections'
     | 'before_conclusion'
     | 'after_content'
+    | 'homepage_above_hero'
+    | 'homepage_below_hero'
     | 'between_homepage_sections'
+    | 'homepage_between_category_sections'
+    | 'homepage_between_post_cards'
     | 'between_archive_items'
     | 'sidebar'
     | 'before_footer'
@@ -403,6 +407,7 @@ export interface AdSlot {
     title?: string;
   };
   thirdPartyHtml?: string;
+  demoConfig?: DemoAdConfig;
   targeting: {
     showOnHomepage: boolean;
     showOnPosts: boolean;
@@ -413,6 +418,24 @@ export interface AdSlot {
     excludedSlugs?: string[];
   };
   notes?: string;
+}
+
+export interface HomepagePlacementControl {
+  enabled: boolean;
+  slotId?: string; // 'auto' or specific slot ID
+  deviceVisibility?: 'all' | 'desktop' | 'mobile';
+  cardInterval?: number; // for between post cards (e.g. after card #2)
+}
+
+export interface HomepageAdsConfig {
+  enabled: boolean;
+  aboveHero?: HomepagePlacementControl;
+  belowHero?: HomepagePlacementControl;
+  betweenSections?: HomepagePlacementControl;
+  betweenCategorySections?: HomepagePlacementControl;
+  betweenPostCards?: HomepagePlacementControl;
+  beforeFooter?: HomepagePlacementControl;
+  excludedSections?: string[];
 }
 
 export interface ScriptIntegration {
@@ -426,11 +449,55 @@ export interface ScriptIntegration {
   notes?: string;
 }
 
+export interface DemoAdConfig {
+  enabled: boolean;
+  publicTestingEnabled?: boolean;
+  template: 'saas' | 'newsletter' | 'developer_tool' | 'design_kit' | 'custom';
+  heading: string;
+  description: string;
+  buttonText: string;
+  destinationUrl: string;
+  imageUrl?: string;
+  bgColor: string;
+  textColor: string;
+  accentColor: string;
+  badgeText?: string;
+  minHeight?: number;
+  customCss?: string;
+}
+
+export type AdProviderType = 'adsense' | 'custom_image' | 'third_party' | 'demo';
+export type AdDisplayLocation = 'homepage' | 'posts' | 'post' | 'pages' | 'page' | 'archives' | 'category' | 'sidebar' | 'footer';
+
+export interface AdConfiguration {
+  id: string;
+  name: string;
+  provider: AdProviderType;
+  adCode: string;
+  customImage?: {
+    imageUrl: string;
+    destinationUrl: string;
+    altText?: string;
+  };
+  enabled: boolean;
+  displayLocations: AdDisplayLocation[];
+  placementRules: Record<string, { placements: string[]; insertionInterval?: number }>;
+  deviceVisibility: 'all' | 'desktop' | 'tablet' | 'mobile';
+  includedSlugs?: string[];
+  excludedSlugs?: string[];
+  notes?: string;
+  createdAt: string;
+}
+
 export interface AdsSettings {
   adsEnabled: boolean;
-  publisherId: string;
-  autoAdsEnabled: boolean;
-  slots: AdSlot[];
+  demoModeEnabled: boolean;
+  publisherId?: string;
+  autoAdsEnabled?: boolean;
+  ads: AdConfiguration[];
+  slots?: AdSlot[];
+  homepageAdsConfig?: HomepageAdsConfig;
+  demoAdConfig?: DemoAdConfig;
 }
 
 export interface ScriptsSettings {
