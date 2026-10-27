@@ -44,6 +44,7 @@ export const HOMEPAGE_PLACEMENTS = [
   { id: 'homepage_above_hero', label: 'Before the Hero Section (Above Hero)' },
   { id: 'homepage_below_hero', label: 'After the Hero Section (Below Hero)' },
   { id: 'homepage_between_category_sections', label: 'Between Category & Featured Sections' },
+  { id: 'between_homepage_sections', label: 'Between Homepage Sections' },
   { id: 'homepage_between_post_cards', label: 'Between Post Cards (Feed)', hasInterval: true },
   { id: 'before_footer', label: 'Before Footer' },
 ];
@@ -57,7 +58,7 @@ export const POST_PLACEMENTS = [
   { id: 'after_sections', label: 'After Selected Article Sections' },
   { id: 'before_conclusion', label: 'Before Conclusion / Discussion' },
   { id: 'after_content', label: 'After Article Content & Author Box' },
-  { id: 'sidebar', label: 'Sidebar Widget Area' },
+  { id: 'before_footer', label: 'Before Article Footer' },
 ];
 
 export const PAGE_PLACEMENTS = [
@@ -66,7 +67,6 @@ export const PAGE_PLACEMENTS = [
   { id: 'before_page_content', label: 'Before Page Content' },
   { id: 'after_page_content', label: 'After Page Content' },
   { id: 'before_footer', label: 'Before Page Footer' },
-  { id: 'sidebar', label: 'Sidebar Widget Area' },
 ];
 
 export const ARCHIVE_PLACEMENTS = [
@@ -75,19 +75,35 @@ export const ARCHIVE_PLACEMENTS = [
   { id: 'before_listing', label: 'Before Listing Items' },
   { id: 'between_listing_items', label: 'Between Listing Cards', hasInterval: true },
   { id: 'after_listing', label: 'After Listing Items' },
-  { id: 'sidebar', label: 'Sidebar Widget Area' },
-];
-
-export const SIDEBAR_PLACEMENTS = [
-  { id: 'before_sidebar', label: 'Before Sidebar Widgets' },
-  { id: 'after_sidebar', label: 'After Sidebar Widgets' },
-  { id: 'sticky_sidebar', label: 'Sticky Sidebar Unit' },
+  { id: 'before_footer', label: 'Before Archive Footer' },
 ];
 
 export const FOOTER_PLACEMENTS = [
-  { id: 'before_site_footer', label: 'Before Site Footer (Site-Wide)' },
   { id: 'after_main_content', label: 'After Main Content & Before Footer' },
+  { id: 'before_site_footer', label: 'Before Site Footer (Site-Wide)' },
 ];
+
+const PLACEMENT_ALIASES_MAP: Record<string, string[]> = {
+  homepage_above_hero: ['before_hero', 'homepage_above_hero'],
+  before_hero: ['homepage_above_hero', 'before_hero'],
+  homepage_below_hero: ['after_hero', 'homepage_below_hero'],
+  after_hero: ['homepage_below_hero', 'after_hero'],
+  homepage_between_post_cards: ['between_post_cards', 'homepage_between_post_cards'],
+  between_post_cards: ['homepage_between_post_cards', 'between_post_cards'],
+  before_intro: ['before_introduction', 'before_intro'],
+  before_introduction: ['before_intro', 'before_introduction'],
+  after_intro: ['after_introduction', 'after_intro'],
+  after_introduction: ['after_intro', 'after_introduction'],
+  between_listing_items: ['between_archive_items', 'between_listing_items'],
+  between_archive_items: ['between_listing_items', 'between_archive_items'],
+  before_page_title: ['before_post_title', 'before_page_title'],
+  after_page_content: ['after_content', 'after_page_content'],
+};
+
+const isPlacementCheckedInRule = (rulePlacements: string[] = [], placementId: string): boolean => {
+  const aliases = PLACEMENT_ALIASES_MAP[placementId] || [placementId];
+  return rulePlacements.some((p) => p === placementId || aliases.includes(p));
+};
 
 export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings }) => {
   const currentAds = siteSettings?.adsSettings || {
@@ -664,7 +680,6 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
                     { id: 'posts', label: 'Single Posts / Articles', icon: <FileText className="h-4 w-4 text-violet-600" /> },
                     { id: 'pages', label: 'Static Pages', icon: <Layers className="h-4 w-4 text-emerald-600" /> },
                     { id: 'archives', label: 'Categories / Archives', icon: <FolderTree className="h-4 w-4 text-amber-600" /> },
-                    { id: 'sidebar', label: 'Sidebar', icon: <Sliders className="h-4 w-4 text-indigo-600" /> },
                     { id: 'footer', label: 'Global Footer', icon: <Layout className="h-4 w-4 text-rose-600" /> },
                   ].map((loc) => {
                     const isSelected = (editingAd.displayLocations || []).includes(loc.id as any);
@@ -708,9 +723,6 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
                 } else if (loc === 'archives') {
                   placementsList = ARCHIVE_PLACEMENTS;
                   locTitle = 'Category / Archive Placement Positions';
-                } else if (loc === 'sidebar') {
-                  placementsList = SIDEBAR_PLACEMENTS;
-                  locTitle = 'Sidebar Placement Positions';
                 } else if (loc === 'footer') {
                   placementsList = FOOTER_PLACEMENTS;
                   locTitle = 'Global Footer Placement Positions';
@@ -726,7 +738,7 @@ export const AdsManager: React.FC<Props> = ({ siteSettings, onUpdateSiteSettings
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {placementsList.map((p) => {
-                        const isChecked = (currentRule.placements || []).includes(p.id);
+                        const isChecked = isPlacementCheckedInRule(currentRule.placements, p.id);
                         return (
                           <div key={p.id} className="space-y-2">
                             <label className="flex items-start gap-2.5 cursor-pointer bg-white p-2.5 rounded-lg border border-slate-200 hover:border-slate-300">

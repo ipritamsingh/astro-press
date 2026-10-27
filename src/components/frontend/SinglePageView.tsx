@@ -68,7 +68,7 @@ export const SinglePageView: React.FC<Props> = ({ page, siteSettings, onBack, on
 
       {/* Ad Placement: Before Page Title */}
       <AdSlotRenderer
-        placement="before_post_title"
+        placement="before_page_title"
         siteSettings={siteSettings}
         contentType="page"
         currentSlug={page.slug}
@@ -84,11 +84,29 @@ export const SinglePageView: React.FC<Props> = ({ page, siteSettings, onBack, on
         </h1>
       </header>
 
+      {/* Ad Placement: After Page Title */}
+      <AdSlotRenderer
+        placement="after_page_title"
+        siteSettings={siteSettings}
+        contentType="page"
+        currentSlug={page.slug}
+        className="my-6"
+      />
+
       {page.featuredImage && (
         <div className="my-8 rounded-2xl overflow-hidden bg-slate-100 shadow-md border border-slate-200">
           <PostCardImage src={page.featuredImage} alt={page.title} className="w-full h-auto object-cover max-h-[400px]" />
         </div>
       )}
+
+      {/* Ad Placement: Before Page Content */}
+      <AdSlotRenderer
+        placement="before_page_content"
+        siteSettings={siteSettings}
+        contentType="page"
+        currentSlug={page.slug}
+        className="my-6"
+      />
 
       {/* Render Gutenberg Blocks if present, or parse rawMarkdown */}
       <div className="py-4">
@@ -97,7 +115,7 @@ export const SinglePageView: React.FC<Props> = ({ page, siteSettings, onBack, on
 
       {/* Ad Placement: After Page Content */}
       <AdSlotRenderer
-        placement="after_content"
+        placement="after_page_content"
         siteSettings={siteSettings}
         contentType="page"
         currentSlug={page.slug}

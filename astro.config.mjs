@@ -171,6 +171,18 @@ export default defineConfig({
     server: {
       cors: true,
     },
+    optimizeDeps: {
+      include: [
+        'react',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'react-dom',
+        'react-dom/client',
+        'lucide-react',
+        'motion',
+        'js-yaml',
+      ],
+    },
     plugins: [tailwindcss(), d1AuthPlugin()],
     resolve: {
       alias: {

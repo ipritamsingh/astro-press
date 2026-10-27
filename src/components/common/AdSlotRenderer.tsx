@@ -12,6 +12,31 @@ interface Props {
   className?: string;
 }
 
+const PLACEMENT_ALIASES: Record<string, string[]> = {
+  homepage_above_hero: ['before_hero', 'homepage_above_hero'],
+  before_hero: ['homepage_above_hero', 'before_hero'],
+  homepage_below_hero: ['after_hero', 'homepage_below_hero'],
+  after_hero: ['homepage_below_hero', 'after_hero'],
+  homepage_between_post_cards: ['between_post_cards', 'homepage_between_post_cards'],
+  between_post_cards: ['homepage_between_post_cards', 'between_post_cards'],
+  before_intro: ['before_introduction', 'before_intro'],
+  before_introduction: ['before_intro', 'before_introduction'],
+  after_intro: ['after_introduction', 'after_intro'],
+  after_introduction: ['after_intro', 'after_introduction'],
+  between_listing_items: ['between_archive_items', 'between_listing_items'],
+  between_archive_items: ['between_listing_items', 'between_archive_items'],
+  before_page_title: ['before_post_title', 'before_page_title'],
+  after_page_content: ['after_content', 'after_page_content'],
+  between_paragraphs: ['between_paragraphs', 'between_paragraph', 'in_article', 'between_blocks'],
+  between_paragraph: ['between_paragraphs', 'between_paragraph', 'in_article', 'between_blocks'],
+};
+
+const getDeviceVisibilityClass = (vis?: string): string => {
+  if (vis === 'desktop_only' || vis === 'desktop') return 'hidden md:block';
+  if (vis === 'mobile_only' || vis === 'mobile') return 'md:hidden';
+  return '';
+};
+
 export const AdSlotRenderer: React.FC<Props> = ({
   placement,
   siteSettings,
@@ -51,6 +76,7 @@ export const AdSlotRenderer: React.FC<Props> = ({
   };
 
   const targetTypes = normalizeType(contentType);
+  const aliasList = PLACEMENT_ALIASES[placement] || [placement];
 
   // Filter matching ads
   const matchingAds = allAds.filter((ad) => {
@@ -64,18 +90,32 @@ export const AdSlotRenderer: React.FC<Props> = ({
 
     for (const loc of targetTypes) {
       const locRule = ad.placementRules?.[loc];
-      if (locRule && locRule.placements && locRule.placements.includes(placement)) {
+      const locPlacements = locRule?.placements || [];
+      if (locPlacements.some((p) => p === placement || aliasList.includes(p))) {
         matchedPlacement = true;
-        if (locRule.insertionInterval !== undefined) {
+        if (locRule?.insertionInterval !== undefined) {
           matchingInterval = locRule.insertionInterval;
         }
         break;
       }
     }
 
+    // Also fallback to top-level ad.placements if defined
+    if (!matchedPlacement && ad.placements && Array.isArray(ad.placements)) {
+      if (ad.placements.some((p) => p === placement || aliasList.includes(p))) {
+        matchedPlacement = true;
+      }
+    }
+
     if (!matchedPlacement) return false;
 
-    if ((placement === 'between_paragraphs' || placement === 'between_listing_items' || placement === 'between_post_cards') && paragraphIndex !== undefined) {
+    if (
+      (placement === 'between_paragraphs' ||
+        placement === 'between_listing_items' ||
+        placement === 'between_post_cards' ||
+        placement === 'homepage_between_post_cards') &&
+      paragraphIndex !== undefined
+    ) {
       if (paragraphIndex % matchingInterval !== 0) {
         return false;
       }
@@ -100,12 +140,17 @@ export const AdSlotRenderer: React.FC<Props> = ({
 
   if (matchingAds.length === 0) return null;
 
+  // Deduplicate ads by ID
+  const uniqueMatchingAds = Array.from(new Map(matchingAds.map((ad) => [ad.id, ad])).values());
+
   return (
     <div className={`my-6 space-y-4 ${className}`}>
-      {matchingAds.map((ad) => {
+      {uniqueMatchingAds.map((ad) => {
+        const visClass = getDeviceVisibilityClass(ad.deviceVisibility);
+
         if (isDemoMode || ad.provider === 'demo') {
           return (
-            <div key={ad.id} className="w-full">
+            <div key={ad.id} className={`w-full ${visClass}`}>
               <DemoAdBanner
                 slot={{
                   id: ad.id,
@@ -128,7 +173,7 @@ export const AdSlotRenderer: React.FC<Props> = ({
 
         if (ad.provider === 'custom_image' && ad.customImage) {
           return (
-            <div key={ad.id} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-2xs">
+            <div key={ad.id} className={`w-full ${visClass} bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-2xs`}>
               <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 tracking-wider">
                 {ad.name} • Sponsored
               </div>
@@ -141,7 +186,7 @@ export const AdSlotRenderer: React.FC<Props> = ({
 
         if (ad.provider === 'third_party' && ad.adCode) {
           return (
-            <div key={ad.id} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center shadow-2xs overflow-hidden">
+            <div key={ad.id} className={`w-full ${visClass} bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center shadow-2xs overflow-hidden`}>
               <div className="text-[10px] uppercase font-bold text-slate-400 mb-2 tracking-wider">{ad.name} • Advertisement</div>
               <div className="overflow-x-auto text-xs text-slate-600 flex justify-center" dangerouslySetInnerHTML={{ __html: ad.adCode }} />
             </div>
@@ -149,7 +194,7 @@ export const AdSlotRenderer: React.FC<Props> = ({
         }
 
         return (
-          <div key={ad.id} className="w-full rounded-2xl overflow-hidden shadow-2xs">
+          <div key={ad.id} className={`w-full ${visClass} rounded-2xl overflow-hidden shadow-2xs`}>
             <div className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider px-1">
               {ad.name} • Google AdSense
             </div>

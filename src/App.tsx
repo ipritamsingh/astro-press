@@ -90,6 +90,7 @@ import { ArchiveView } from './components/frontend/ArchiveView';
 import { AuthorProfileView } from './components/frontend/AuthorProfileView';
 import { SocialCommunityCta } from './components/frontend/SocialCommunityCta';
 import { SearchModal } from './components/frontend/SearchModal';
+import { AdSlotRenderer } from './components/common/AdSlotRenderer';
 
 // Admin Components
 import { AdminLayout, AdminView } from './components/admin/AdminLayout';
@@ -1102,12 +1103,30 @@ export default function App(props: AppProps = {}) {
             )}
           </main>
 
+          {/* Ad Placement: After Main Content & Before Footer */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <AdSlotRenderer
+              placement="after_main_content"
+              siteSettings={cms.siteSettings}
+              contentType="footer"
+            />
+          </div>
+
           <SocialCommunityCta
             enabled={cms.siteSettings?.communityCtaEnabled !== false}
             title={cms.siteSettings?.communityCtaTitle}
             subtitle={cms.siteSettings?.communityCtaSubtitle}
             communityLinks={cms.siteSettings?.communityLinks}
           />
+
+          {/* Ad Placement: Before Site Footer */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <AdSlotRenderer
+              placement="before_site_footer"
+              siteSettings={cms.siteSettings}
+              contentType="footer"
+            />
+          </div>
 
           <WebsiteFooter
             themeSettings={cms.themeSettings}

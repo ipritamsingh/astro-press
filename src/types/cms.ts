@@ -482,7 +482,8 @@ export interface AdConfiguration {
   enabled: boolean;
   displayLocations: AdDisplayLocation[];
   placementRules: Record<string, { placements: string[]; insertionInterval?: number }>;
-  deviceVisibility: 'all' | 'desktop' | 'tablet' | 'mobile';
+  placements?: string[];
+  deviceVisibility: 'all' | 'desktop' | 'tablet' | 'mobile' | 'desktop_only' | 'mobile_only';
   includedSlugs?: string[];
   excludedSlugs?: string[];
   notes?: string;

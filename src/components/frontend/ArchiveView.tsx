@@ -50,6 +50,14 @@ export const ArchiveView: React.FC<Props> = ({
         <span>Back to Home</span>
       </button>
 
+      {/* Ad Placement: Before Archive Title & Description */}
+      <AdSlotRenderer
+        placement="before_archive_title"
+        siteSettings={siteSettings}
+        contentType="archives"
+        className="mb-6"
+      />
+
       {/* Archive Header Banner */}
       <header className="mb-10 pb-6 border-b border-slate-200 space-y-3">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600">
@@ -59,6 +67,15 @@ export const ArchiveView: React.FC<Props> = ({
         <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight font-serif-custom">
           {item.name}
         </h1>
+
+        {/* Ad Placement: After Archive Title */}
+        <AdSlotRenderer
+          placement="after_archive_title"
+          siteSettings={siteSettings}
+          contentType="archives"
+          className="my-4"
+        />
+
         {isCategory && categoryItem.description && (
           <p className="text-sm sm:text-base text-slate-600 max-w-2xl leading-relaxed">
             {categoryItem.description}
@@ -69,6 +86,14 @@ export const ArchiveView: React.FC<Props> = ({
         </span>
       </header>
 
+      {/* Ad Placement: Before Listing Items */}
+      <AdSlotRenderer
+        placement="before_listing"
+        siteSettings={siteSettings}
+        contentType="archives"
+        className="my-6"
+      />
+
       {/* Articles Grid */}
       {filteredPosts.length === 0 ? (
         <div className="p-12 text-center text-slate-400 bg-slate-50 rounded-2xl border border-slate-200">
@@ -78,19 +103,20 @@ export const ArchiveView: React.FC<Props> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredPosts.map((post, postIdx) => (
             <React.Fragment key={post.id}>
-              {postIdx === 2 && (
+              {postIdx > 0 && (
                 <div className="col-span-1 md:col-span-2">
                   <AdSlotRenderer
-                    placement="between_archive_items"
+                    placement="between_listing_items"
                     siteSettings={siteSettings}
-                    contentType="category"
+                    contentType="archives"
+                    paragraphIndex={postIdx}
                     className="my-2"
                   />
                 </div>
               )}
               <article
                 onClick={() => onSelectPost(post)}
-                className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between space-y-4 w-full"
               >
                 <div className="space-y-3">
                   <div className="aspect-16/10 w-full rounded-xl overflow-hidden bg-slate-100 relative shrink-0">
@@ -104,7 +130,6 @@ export const ArchiveView: React.FC<Props> = ({
                       {post.category}
                     </span>
                   </div>
-
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <span>{new Date(post.pubDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     <span>•</span>
@@ -113,16 +138,13 @@ export const ArchiveView: React.FC<Props> = ({
                       {post.readingTime} min
                     </span>
                   </div>
-
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
                     {post.title}
                   </h3>
-
                   <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
                     {post.excerpt}
                   </p>
                 </div>
-
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-400">By</span>
@@ -159,11 +181,19 @@ export const ArchiveView: React.FC<Props> = ({
         </div>
       )}
 
+      {/* Ad Placement: After Listing Items */}
+      <AdSlotRenderer
+        placement="after_listing"
+        siteSettings={siteSettings}
+        contentType="archives"
+        className="my-6"
+      />
+
       {/* Ad Placement: Before Footer */}
       <AdSlotRenderer
         placement="before_footer"
         siteSettings={siteSettings}
-        contentType="category"
+        contentType="archives"
         className="mt-12"
       />
     </div>

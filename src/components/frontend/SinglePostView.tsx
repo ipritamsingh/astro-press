@@ -543,19 +543,14 @@ export const SinglePostView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Ad Placement: Between Paragraphs / In-Article Top */}
-      <AdSlotRenderer
-        placement="between_paragraphs"
-        siteSettings={siteSettings}
-        contentType="post"
-        paragraphIndex={2}
-        currentSlug={post.slug}
-        className="my-6"
-      />
-
       {/* Body Content & Rendered Gutenberg Blocks */}
       <div className="py-6">
-        <GutenbergBlockRenderer blocks={post.blocks} rawMarkdown={post.body} />
+        <GutenbergBlockRenderer
+          blocks={post.blocks}
+          rawMarkdown={post.body}
+          siteSettings={siteSettings}
+          currentSlug={post.slug}
+        />
       </div>
 
       {/* Ad Placement: After Selected Article Sections */}
@@ -800,14 +795,7 @@ export const SinglePostView: React.FC<Props> = ({
         </section>
       )}
 
-      {/* Ad Placement: Sidebar Banner */}
-      <AdSlotRenderer
-        placement="sidebar"
-        siteSettings={siteSettings}
-        contentType="post"
-        currentSlug={post.slug}
-        className="my-8"
-      />
+
 
       {/* Ad Placement: Before Footer */}
       <AdSlotRenderer

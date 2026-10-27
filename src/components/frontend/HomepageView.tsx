@@ -110,19 +110,18 @@ export const HomepageView: React.FC<Props> = ({
               const cardInterval = siteSettings?.adsSettings?.homepageAdsConfig?.betweenPostCards?.cardInterval ?? 2;
               return (
                 <React.Fragment key={post.id}>
-                  {postIdx === cardInterval && (
-                    <div className="col-span-1 md:col-span-2">
-                      <AdSlotRenderer
-                        placement="homepage_between_post_cards"
-                        siteSettings={siteSettings}
-                        contentType="homepage"
-                        className="my-2"
-                      />
-                    </div>
+                  {postIdx > 0 && postIdx % cardInterval === 0 && (
+                    <AdSlotRenderer
+                      placement="homepage_between_post_cards"
+                      siteSettings={siteSettings}
+                      contentType="homepage"
+                      paragraphIndex={postIdx}
+                      className="col-span-1 md:col-span-2 my-2"
+                    />
                   )}
                   <article
                     onClick={() => onSelectPost(post)}
-                    className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center"
+                    className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 items-stretch sm:items-center w-full"
                   >
                     <div className="w-full sm:w-44 aspect-16/10 sm:aspect-square sm:h-32 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
                       <PostCardImage
@@ -501,19 +500,18 @@ export const HomepageView: React.FC<Props> = ({
                     const cardInterval = siteSettings?.adsSettings?.homepageAdsConfig?.betweenPostCards?.cardInterval ?? 2;
                     return (
                       <React.Fragment key={post.id}>
-                        {postIdx === cardInterval && (
-                          <div className="col-span-1 md:col-span-2">
-                            <AdSlotRenderer
-                              placement="homepage_between_post_cards"
-                              siteSettings={siteSettings}
-                              contentType="homepage"
-                              className="my-2"
-                            />
-                          </div>
+                        {postIdx > 0 && postIdx % cardInterval === 0 && (
+                          <AdSlotRenderer
+                            placement="homepage_between_post_cards"
+                            siteSettings={siteSettings}
+                            contentType="homepage"
+                            paragraphIndex={postIdx}
+                            className="col-span-1 md:col-span-2 my-2"
+                          />
                         )}
                         <article
                           onClick={() => onSelectPost(post)}
-                          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center"
+                          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 items-stretch sm:items-center w-full"
                         >
                           <div className="w-full sm:w-44 aspect-16/10 sm:aspect-square sm:h-32 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
                             <PostCardImage

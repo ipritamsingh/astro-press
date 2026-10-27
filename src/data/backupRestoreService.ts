@@ -1,4 +1,8 @@
-import JSZip from 'jszip';
+async function getJSZip() {
+  const mod = await import('jszip');
+  return (mod as any).default || mod;
+}
+
 import {
   Post,
   Page,
@@ -229,7 +233,8 @@ export async function createFullSiteBackup(
 ): Promise<{ blob: Blob; filename: string; manifest: BackupManifest }> {
   onProgress?.('Initializing backup package...', 5);
 
-  const zip = new JSZip();
+  const JSZipClass = await getJSZip();
+  const zip = new JSZipClass();
   const siteTitle = cms.siteSettings?.siteTitle || cms.themeSettings?.siteName || 'AstroPress';
   const posts = cms.posts || [];
   const drafts = posts.filter((p) => p.status === 'draft').length;
@@ -507,7 +512,7 @@ export async function createFullSiteBackup(
       compression: 'DEFLATE',
       compressionOptions: { level: 6 },
     },
-    (meta) => {
+    (meta: { percent: number }) => {
       const pct = 75 + Math.round(meta.percent * 0.23);
       onProgress?.(`Compressing files: ${Math.round(meta.percent)}%`, pct);
     }
@@ -539,7 +544,8 @@ export async function validateBackupArchive(
   }
 
   try {
-    const zip = await JSZip.loadAsync(file);
+    const JSZipClass = await getJSZip();
+    const zip = await JSZipClass.loadAsync(file);
 
     // 1. Validate manifest.json exists
     const manifestFile = zip.file('manifest.json');
