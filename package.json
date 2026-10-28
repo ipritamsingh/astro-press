@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "astro dev",
     "prebuild": "node scripts/clean-dist.cjs && node scripts/generate-manifest.cjs",
-    "build": "node scripts/clean-dist.cjs && node scripts/generate-manifest.cjs && astro build",
-    "preview": "astro preview",
-    "check": "astro check",
+    "build": "node scripts/clean-dist.cjs && node scripts/generate-manifest.cjs && npx astro build",
+    "preview": "npx astro preview",
+    "check": "npx astro check",
     "clean": "node scripts/clean-dist.cjs",
     "lint": "tsc --noEmit",
     "prelint": "node scripts/generate-manifest.cjs"
