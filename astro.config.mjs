@@ -170,6 +170,11 @@ export default defineConfig({
   vite: {
     server: {
       cors: true,
+      allowedHosts: true,
+      hmr: {
+        protocol: 'wss',
+        clientPort: 443,
+      },
     },
     optimizeDeps: {
       include: [

@@ -3,14 +3,27 @@ const path = require('path');
 
 const rootDir = path.resolve(__dirname, '..');
 
-const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', '.astro', 'build', 'coverage', '.cache', '.d1', '.wrangler']);
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  '.astro',
+  'build',
+  'coverage',
+  '.cache',
+  '.d1',
+  '.wrangler',
+  '.aistudio',
+  'skills',
+  '.tempmediaStorage',
+]);
 const IGNORED_FILES = new Set([
   'src/data/projectFilesManifest.ts',
   '.DS_Store',
   'bun.lock',
   'bun.lockb',
   'pnpm-lock.yaml',
-  'yarn.lock'
+  'yarn.lock',
 ]);
 
 function getAllFiles(dir, baseDir = '') {
@@ -20,9 +33,9 @@ function getAllFiles(dir, baseDir = '') {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const relativePath = baseDir ? `${baseDir}/${entry.name}` : entry.name;
-    
+
     if (entry.isDirectory()) {
-      if (!IGNORED_DIRS.has(entry.name)) {
+      if (!IGNORED_DIRS.has(entry.name) && !entry.name.startsWith('.')) {
         results = results.concat(getAllFiles(path.join(dir, entry.name), relativePath));
       }
     } else if (entry.isFile()) {
@@ -55,10 +68,16 @@ try {
   ]);
 
   for (const relPath of filePaths) {
+    if (relPath.startsWith('public/assets/aistudio')) continue;
     const fullPath = path.join(rootDir, relPath);
     try {
       const ext = path.extname(relPath).toLowerCase();
       if (BINARY_EXTS.has(ext)) {
+        const stats = fs.statSync(fullPath);
+        if (stats.size > 50 * 1024) {
+          // Skip bundling large binary assets into the TypeScript source manifest
+          continue;
+        }
         const mime =
           ext === '.webp'
             ? 'image/webp'

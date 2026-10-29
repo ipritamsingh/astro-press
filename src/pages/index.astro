@@ -18,7 +18,7 @@ const serverPosts = collectionPosts.map((post) => ({
   title: post.data.title,
   slug: post.data.slug || post.id.replace(/\.md$/, ''),
   pubDate: post.data.pubDate ? new Date(post.data.pubDate).toISOString() : new Date().toISOString(),
-  status: post.data.draft ? 'draft' : (post.data.status || 'published'),
+  status: (post.data.draft ? 'draft' : (post.data.status || 'published')) as any,
   author: post.data.author,
   category: post.data.category,
   tags: post.data.tags || [],
@@ -45,7 +45,7 @@ const seedHero: any = (heroConfigJson as any) || {};
   <App
     client:load
     seed={{
-      posts: publishedPosts,
+      posts: publishedPosts as any,
       categories: seedCategories,
       menus: seedMenus,
       themeSettings: seedTheme,

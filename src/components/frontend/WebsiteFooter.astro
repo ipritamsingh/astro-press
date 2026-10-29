@@ -64,9 +64,9 @@ const themeClass =
     : 'bg-slate-950 text-slate-300 border-slate-800';
 
 const paddingClass =
-  footer?.padding === 'compact'
+  footer?.paddingY === 'compact' || (footer as any)?.padding === 'compact'
     ? 'py-8'
-    : footer?.padding === 'spacious'
+    : footer?.paddingY === 'spacious' || (footer as any)?.padding === 'spacious'
     ? 'py-16'
     : 'py-12';
 

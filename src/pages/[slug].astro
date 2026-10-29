@@ -105,10 +105,11 @@ const initialPage = isPage
       id: page.id,
       title: page.data.title,
       slug: entrySlug,
-      status: page.data.draft ? 'draft' : 'published',
+      status: (page.data.draft ? 'draft' : 'published') as any,
       template: page.data.template || 'default',
       blocks: (page.data.blocks && page.data.blocks.length > 0) ? page.data.blocks : parseMarkdownToBlocks(page.body || ''),
       body: page.body || '',
+      seo: page.data.seo || {},
     }
   : null;
 ---

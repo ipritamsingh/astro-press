@@ -148,7 +148,7 @@ const getPostPermalink = (post: any) => {
       enabled={siteSettings?.communityCtaEnabled !== false}
       title={siteSettings?.communityCtaTitle}
       subtitle={siteSettings?.communityCtaSubtitle}
-      communityLinks={siteSettings?.communityLinks}
+      communityLinks={siteSettings?.communityLinks as any}
     />
 
     <WebsiteFooterWrapper

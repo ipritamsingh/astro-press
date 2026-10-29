@@ -20,7 +20,7 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const slug = post.data.slug || post.id.replace(/\.md$/, '');
-const seo = post.data.seo || {};
+const seo: any = (post.data.seo as any) || {};
 
 // permalinkStructure is /%postname%/ so the canonical post URL is the root-level
 // /{slug}/. This /posts/{slug}/ route is kept working for existing inbound
@@ -40,7 +40,7 @@ const initialPost = {
   title: post.data.title,
   slug,
   pubDate: post.data.pubDate ? new Date(post.data.pubDate).toISOString() : new Date().toISOString(),
-  status: post.data.draft ? 'draft' : (post.data.status || 'published'),
+  status: (post.data.draft ? 'draft' : (post.data.status || 'published')) as any,
   author: post.data.author,
   category: post.data.category,
   tags: post.data.tags || [],
@@ -67,7 +67,7 @@ const initialPost = {
   </script>
   <App
     client:load
-    seed={{ posts: [initialPost], siteSettings }}
-    initialRoute={{ type: 'post', post: initialPost }}
+    seed={{ posts: [initialPost as any], siteSettings }}
+    initialRoute={{ type: 'post', post: initialPost as any }}
   />
 </Layout>

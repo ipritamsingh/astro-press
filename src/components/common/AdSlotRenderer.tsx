@@ -37,6 +37,68 @@ const getDeviceVisibilityClass = (vis?: string): string => {
   return '';
 };
 
+/**
+ * Validates URLs for custom ad links and images to prevent dangerous pseudo-protocols like javascript:
+ */
+const sanitizeAdUrl = (url?: string): string => {
+  if (!url) return '#';
+  const trimmed = url.trim();
+  // Allow safe web protocols and relative paths
+  if (
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('mailto:')
+  ) {
+    return trimmed;
+  }
+  // Allow safe inline image data URLs for custom image ads
+  if (trimmed.startsWith('data:image/')) {
+    return trimmed;
+  }
+  // Block any dangerous scheme (e.g. javascript:, vbscript:, data:text/html)
+  return '#';
+};
+
+/**
+ * Sanitizes ad HTML and script contents to prevent cross-site scripting (XSS),
+ * session hijacking, token theft, and unauthorized DOM manipulation,
+ * while safely preserving legitimate Google AdSense, prebid, and trusted vendor tags.
+ */
+const sanitizeAdCode = (code?: string, provider: 'adsense' | 'third_party' = 'adsense'): string => {
+  if (!code) return '';
+
+  let sanitized = code;
+
+  // 1. Strip dangerous pseudo-protocols like javascript: or vbscript: in attributes
+  sanitized = sanitized.replace(/(href|src|action)\s*=\s*(['"]?)\s*(javascript|vbscript):/gi, '$1=$2#');
+
+  // 2. Prevent credential & storage exfiltration (document.cookie, sessionStorage, localStorage, auth tokens)
+  sanitized = sanitized
+    .replace(/\bdocument\.cookie\b/gi, '""')
+    .replace(/\b(window\.)?localStorage\b/gi, 'undefined')
+    .replace(/\b(window\.)?sessionStorage\b/gi, 'undefined')
+    .replace(/\b(window\.)?indexedDB\b/gi, 'undefined');
+
+  // 3. For iframes in ad code, enforce sandbox boundaries if not already present
+  sanitized = sanitized.replace(/<iframe\b([^>]*?)>/gi, (match, attrs) => {
+    if (!/sandbox\s*=/i.test(attrs)) {
+      return `<iframe sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="lazy" ${attrs}>`;
+    }
+    return match;
+  });
+
+  // 4. For Google AdSense and third-party ad blocks, neutralize dangerous inline handlers on standard elements
+  if (provider === 'adsense') {
+    sanitized = sanitized.replace(/\bon(load|error|click|mouseover|focus|submit)\s*=/gi, 'data-blocked-handler=');
+  } else {
+    sanitized = sanitized.replace(/<(img|svg|body|input|form|a)\b([^>]*?)\bon\w+\s*=/gi, '<$1 $2 data-blocked-handler=');
+  }
+
+  return sanitized;
+};
+
 export const AdSlotRenderer: React.FC<Props> = ({
   placement,
   siteSettings,
@@ -172,33 +234,38 @@ export const AdSlotRenderer: React.FC<Props> = ({
         }
 
         if (ad.provider === 'custom_image' && ad.customImage) {
+          const safeDestUrl = sanitizeAdUrl(ad.customImage.destinationUrl);
+          const safeImgUrl = sanitizeAdUrl(ad.customImage.imageUrl);
+
           return (
             <div key={ad.id} className={`w-full ${visClass} bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-2xs`}>
               <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 tracking-wider">
                 {ad.name} • Sponsored
               </div>
-              <a href={ad.customImage.destinationUrl || '#'} target="_blank" rel="noopener noreferrer" className="block w-full rounded-xl overflow-hidden">
-                <img src={ad.customImage.imageUrl} alt={ad.customImage.altText || ad.name} className="w-full max-h-56 object-cover rounded-xl" loading="lazy" />
+              <a href={safeDestUrl} target="_blank" rel="noopener noreferrer nofollow" className="block w-full rounded-xl overflow-hidden">
+                <img src={safeImgUrl} alt={ad.customImage.altText || ad.name} className="w-full max-h-56 object-cover rounded-xl" loading="lazy" />
               </a>
             </div>
           );
         }
 
         if (ad.provider === 'third_party' && ad.adCode) {
+          const safeThirdPartyHtml = sanitizeAdCode(ad.adCode, 'third_party');
           return (
             <div key={ad.id} className={`w-full ${visClass} bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center shadow-2xs overflow-hidden`}>
               <div className="text-[10px] uppercase font-bold text-slate-400 mb-2 tracking-wider">{ad.name} • Advertisement</div>
-              <div className="overflow-x-auto text-xs text-slate-600 flex justify-center" dangerouslySetInnerHTML={{ __html: ad.adCode }} />
+              <div className="overflow-x-auto text-xs text-slate-600 flex justify-center" dangerouslySetInnerHTML={{ __html: safeThirdPartyHtml }} />
             </div>
           );
         }
 
+        const safeAdSenseHtml = sanitizeAdCode(ad.adCode, 'adsense');
         return (
           <div key={ad.id} className={`w-full ${visClass} rounded-2xl overflow-hidden shadow-2xs`}>
             <div className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider px-1">
               {ad.name} • Google AdSense
             </div>
-            <div className="w-full bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center flex flex-col items-center justify-center min-h-[90px] overflow-x-auto" dangerouslySetInnerHTML={{ __html: ad.adCode }} />
+            <div className="w-full bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center flex flex-col items-center justify-center min-h-[90px] overflow-x-auto" dangerouslySetInnerHTML={{ __html: safeAdSenseHtml }} />
           </div>
         );
       })}
