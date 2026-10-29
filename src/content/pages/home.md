@@ -1,8 +1,8 @@
 ---
-title: 'Home'
-slug: 'home'
-pubDate: '2026-10-29T07:26:36.702Z'
-template: 'default'
+title: "Home"
+slug: "home"
+pubDate: 2026-10-29T10:51:02.757Z
+template: "default"
 draft: false
 blocks: []
 ---
