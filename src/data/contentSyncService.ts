@@ -13,6 +13,7 @@ import {
 } from '../types/cms';
 import { CMSDataState } from './cmsStore';
 import { parseMarkdownToBlocks } from '../components/common/GutenbergBlockRenderer';
+import { getSessionToken } from './authService';
 
 /**
  * Robust parser for Markdown files with YAML frontmatter
@@ -146,7 +147,7 @@ export function parseFrontmatterAndMarkdown(
  */
 export async function fetchRemoteCMSDataFromGitHub(
   settings: DeploymentSettings,
-  sessionToken?: string
+  _providedToken?: string
 ): Promise<{
   success: boolean;
   data?: Partial<CMSDataState>;
@@ -158,7 +159,6 @@ export async function fetchRemoteCMSDataFromGitHub(
   const branch = settings.githubBranch || 'main';
   const repoString = settings.githubRepo || 'ipritamsingh/astro-press';
   const [owner, repoName] = repoString.split('/');
-  const token = (sessionToken || settings.githubToken || '').trim();
 
   if (!owner || !repoName) {
     return { success: false, error: 'GitHub repository is not configured.' };
@@ -173,13 +173,18 @@ export async function fetchRemoteCMSDataFromGitHub(
     ? `${settings.cloudflareWorkerUrl!.trim()}/repos/${owner}/${repoName}`
     : `/api/github/repos/${owner}/${repoName}`;
 
+  const sessionToken = getSessionToken();
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
   };
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`;
+    headers['X-Auth-Token'] = sessionToken;
+  }
 
   try {
     // 1. Get HEAD commit for branch
-    const refRes = await fetch(`${baseApiUrl}/git/ref/heads/${branch}`, { headers });
+    const refRes = await fetch(`${baseApiUrl}/git/ref/heads/${branch}`, { headers, credentials: 'include' });
     if (!refRes.ok) {
       return { success: false, error: `Failed to fetch branch "${branch}" (HTTP ${refRes.status})` };
     }

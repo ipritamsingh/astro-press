@@ -19,6 +19,7 @@ import {
   mergeCMSStates,
   parseFrontmatterAndMarkdown,
 } from './contentSyncService';
+import { getSessionToken } from './authService';
 
 export interface PublishResult {
   success: boolean;
@@ -147,17 +148,22 @@ export async function checkGitHubConnection(
     };
   }
 
+  const sessionToken = getSessionToken();
   const hasProxy = workerProxyUrl && workerProxyUrl.trim() && !isAuthenticatorWorkerUrl(workerProxyUrl);
   const targetUrl = hasProxy ? `${workerProxyUrl!.trim()}/repos/${cleanOwner}/${cleanRepo}` : `/api/github/repos/${cleanOwner}/${cleanRepo}`;
 
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
   };
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`;
+    headers['X-Auth-Token'] = sessionToken;
+  }
 
   let response: Response | null = null;
 
   try {
-    response = await fetch(targetUrl, { method: 'GET', headers });
+    response = await fetch(targetUrl, { method: 'GET', headers, credentials: 'include' });
   } catch (err: any) {
     // Request failed
   }
@@ -204,6 +210,7 @@ export async function checkGitHubConnection(
   }
 
   if (response.status === 401) {
+    const body = await response.json().catch(() => ({}));
     return {
       connected: false,
       repo: fullRepo,
@@ -211,7 +218,20 @@ export async function checkGitHubConnection(
       latencyMs,
       statusCode: 401,
       lastChecked: new Date().toLocaleTimeString(),
-      message: 'GitHub Authentication Failed (401 Unauthorized). The Personal Access Token is invalid or expired.',
+      message: body.error || 'GitHub Authentication Failed (401 Unauthorized). Administrator session is required or has expired.',
+    };
+  }
+
+  if (response.status === 503) {
+    const body = await response.json().catch(() => ({}));
+    return {
+      connected: false,
+      repo: fullRepo,
+      branch,
+      latencyMs,
+      statusCode: 503,
+      lastChecked: new Date().toLocaleTimeString(),
+      message: body.error || 'GitHub PAT secret (GITHUB_PAT) is not configured on the server. Please configure GITHUB_PAT as an encrypted Cloudflare Secret.',
     };
   }
 
@@ -413,10 +433,15 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
     ? `${deploymentSettings.cloudflareWorkerUrl!.trim()}/repos/${owner}/${repoName}`
     : `/api/github/repos/${owner}/${repoName}`;
 
+  const sessionToken = getSessionToken();
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
   };
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`;
+    headers['X-Auth-Token'] = sessionToken;
+  }
 
   if (onProgress) {
     onProgress({ current: 0, total: 100, filePath: 'Connecting to GitHub repository and checking remote state...', status: 'pushing' });
