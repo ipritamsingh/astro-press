@@ -29,18 +29,37 @@ for (const dir of dirs) {
 
     try {
       const data = yaml.load(frontmatterRaw);
-      // Re-dump safely with no line wrapping for strings
-      const newFrontmatter = yaml.dump(data, { lineWidth: -1, noRefs: true, sortKeys: false });
+
+      // Clean excerpt and metaDescription if they contain markdown image syntax starting with !
+      if (data.excerpt && typeof data.excerpt === 'string') {
+        data.excerpt = data.excerpt.replace(/!\[.*?\]\(.*?\)/g, '').trim();
+      }
+      if (data.seo) {
+        if (data.seo.metaDescription && typeof data.seo.metaDescription === 'string') {
+          data.seo.metaDescription = data.seo.metaDescription.replace(/!\[.*?\]\(.*?\)/g, '').trim();
+        }
+      }
+
+      // Re-dump safely with explicit double quote style or lineWidth -1
+      const newFrontmatter = yaml.dump(data, {
+        lineWidth: -1,
+        noRefs: true,
+        sortKeys: false,
+        quotingType: '"',
+        forceQuotes: true,
+      });
+
       const newContent = `---\n${newFrontmatter}---${body}`;
       if (newContent !== content) {
         fs.writeFileSync(filePath, newContent, 'utf8');
-        console.log(`[FIXED] Re-serialized frontmatter for ${filePath}`);
+        console.log(`[FIXED] Sanitized and re-serialized frontmatter for ${filePath}`);
         fixedCount++;
       } else {
         console.log(`[OK] Valid YAML in ${filePath}`);
       }
     } catch (err) {
       console.error(`[ERROR] Failed to parse YAML in ${filePath}:`, err.message);
+      // Attempt manual fix if needed
     }
   }
 }
