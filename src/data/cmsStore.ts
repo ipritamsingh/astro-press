@@ -268,7 +268,11 @@ export function loadStoredData(seed?: Partial<CMSDataState>): CMSDataState {
       themeSettings: loadedThemeSettings,
       templates: parsed.templates || initialTemplates,
       siteSettings: loadedSiteSettings,
-      deploymentSettings: parsed.deploymentSettings || initialDeploymentSettings,
+      deploymentSettings: (() => {
+        const dep = { ...(parsed.deploymentSettings || initialDeploymentSettings) };
+        delete dep.githubToken;
+        return dep;
+      })(),
       commitHistory: parsed.commitHistory || initialCommitHistory,
     };
   } catch (err) {
@@ -379,6 +383,11 @@ function sanitizeDataForLocalStorage(data: CMSDataState): CMSDataState {
         }
       }
     });
+  }
+
+  // Strip GitHub PAT so it is NEVER persisted to browser localStorage
+  if (cleanData.deploymentSettings) {
+    delete (cleanData.deploymentSettings as any).githubToken;
   }
 
   return cleanData;

@@ -135,12 +135,112 @@ export async function handleLocalAuthRequest(req: any, res: any) {
   }
 }
 
+async function verifyAdminSession(req: any): Promise<boolean> {
+  try {
+    const cookieHeader = req.headers['cookie'] || '';
+    const match = cookieHeader.match(/(?:^|;\s*)astropress_session=([^;]*)/);
+    const token = match ? decodeURIComponent(match[1]) : null;
+    const authHeader = req.headers['authorization'];
+    const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+    const effectiveToken = token || bearerToken;
+
+    if (!effectiveToken) return false;
+
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(effectiveToken));
+    const tokenHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    const db = getLocalD1Database();
+    const session = await db.prepare(
+      `SELECT s.id FROM admin_sessions s JOIN admin_users u ON s.user_id = u.id WHERE s.token_hash = ? AND u.is_active = 1 LIMIT 1`
+    ).bind(tokenHash).first();
+
+    return Boolean(session);
+  } catch {
+    return false;
+  }
+}
+
 export async function handleLocalApiRequest(req: any, res: any) {
   const url = req.url || '';
 
   // Auth requests
   if (url.startsWith('/api/auth') || url === '/api/auth') {
     return handleLocalAuthRequest(req, res);
+  }
+
+  // GitHub Proxy requests
+  if (url.startsWith('/api/github')) {
+    try {
+      const isAuthenticated = await verifyAdminSession(req);
+      if (!isAuthenticated) {
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Unauthorized. Admin session required.' }));
+        return;
+      }
+
+      const pat = process.env.GITHUB_PAT;
+      if (!pat) {
+        res.statusCode = 503;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'GitHub PAT secret (GITHUB_PAT) is not configured on the server.' }));
+        return;
+      }
+
+      const parsedUrl = new URL(url, 'http://localhost:3000');
+      const githubPath = parsedUrl.pathname.replace(/^\/api\/github/, '');
+
+      const ALLOWED_METHODS = ['GET', 'POST', 'PATCH'];
+      if (!ALLOWED_METHODS.includes(req.method)) {
+        res.statusCode = 405;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Method not allowed.' }));
+        return;
+      }
+
+      const ALLOWED_PATH = /^\/repos\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)(?:\/git\/(?:ref\/heads\/[A-Za-z0-9._/-]+|refs\/heads\/[A-Za-z0-9._/-]+|commits(?:\/[A-Za-z0-9]+)?|trees(?:\/[A-Za-z0-9]+)?|blobs(?:\/[A-Za-z0-9]+)?))?$/;
+      if (!ALLOWED_PATH.test(githubPath)) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'GitHub API path not allowed.' }));
+        return;
+      }
+
+      let bodyBuffer: Buffer | null = null;
+      if (['POST', 'PATCH'].includes(req.method)) {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        bodyBuffer = Buffer.concat(chunks);
+      }
+
+      const targetUrl = `https://api.github.com${githubPath}${parsedUrl.search}`;
+      const upstreamRes = await fetch(targetUrl, {
+        method: req.method,
+        headers: {
+          'Authorization': `Bearer ${pat}`,
+          'Accept': req.headers['accept'] || 'application/vnd.github.v3+json',
+          'User-Agent': 'AstroPress-CMS-Server',
+          ...(req.headers['content-type'] ? { 'Content-Type': req.headers['content-type'] } : {}),
+        },
+        body: bodyBuffer && bodyBuffer.length > 0 ? new Uint8Array(bodyBuffer) : undefined,
+      });
+
+      res.statusCode = upstreamRes.status;
+      res.setHeader('Content-Type', upstreamRes.headers.get('content-type') || 'application/json');
+      res.setHeader('Cache-Control', 'no-store');
+      const text = await upstreamRes.text();
+      res.end(text);
+      return;
+    } catch (err: any) {
+      console.error('[GitHub Proxy Error]', err);
+      res.statusCode = 502;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'Upstream GitHub request failed.' }));
+      return;
+    }
   }
 
   // Media upload endpoint

@@ -119,8 +119,10 @@ export default RefreshRuntime;
         if (
           req.url &&
           (req.url.startsWith('/api/auth') ||
+            req.url.startsWith('/api/github') ||
             req.url.startsWith('/api/media') ||
-            req.url.startsWith('/api/content'))
+            req.url.startsWith('/api/content') ||
+            req.url.startsWith('/api/newsletter'))
         ) {
           try {
             const { handleLocalApiRequest } = await import('./src/server/localD1Server.ts');

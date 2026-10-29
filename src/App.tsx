@@ -1506,8 +1506,6 @@ export default function App(props: AppProps = {}) {
               menus={cms.menus}
               deploymentSettings={cms.deploymentSettings}
               commitHistory={cms.commitHistory}
-              sessionToken={sessionGitHubToken}
-              onUpdateSessionToken={(t) => setSessionGitHubToken(t)}
               onUpdateDeploymentSettings={(settings) => cms.updateDeploymentSettings(settings)}
               onRecordCommit={(msg) => cms.recordCommit(msg)}
               onUpdateGithubSyncStatus={(s) => setGithubSyncStatus(s)}

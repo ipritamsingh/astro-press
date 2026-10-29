@@ -171,14 +171,11 @@ export async function fetchRemoteCMSDataFromGitHub(
 
   const baseApiUrl = useProxy
     ? `${settings.cloudflareWorkerUrl!.trim()}/repos/${owner}/${repoName}`
-    : `https://api.github.com/repos/${owner}/${repoName}`;
+    : `/api/github/repos/${owner}/${repoName}`;
 
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
   };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
   try {
     // 1. Get HEAD commit for branch

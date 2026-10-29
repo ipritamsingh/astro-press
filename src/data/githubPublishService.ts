@@ -128,7 +128,7 @@ export async function checkGitHubConnection(
   owner: string,
   repoName: string,
   branch: string,
-  token?: string,
+  _token?: string,
   workerProxyUrl?: string
 ): Promise<ConnectionStatus> {
   const start = Date.now();
@@ -147,35 +147,19 @@ export async function checkGitHubConnection(
     };
   }
 
-  const cleanToken = token?.trim();
   const hasProxy = workerProxyUrl && workerProxyUrl.trim() && !isAuthenticatorWorkerUrl(workerProxyUrl);
-
-  const directUrl = `https://api.github.com/repos/${cleanOwner}/${cleanRepo}`;
-  const targetUrl = hasProxy ? `${workerProxyUrl!.trim()}/repos/${cleanOwner}/${cleanRepo}` : directUrl;
+  const targetUrl = hasProxy ? `${workerProxyUrl!.trim()}/repos/${cleanOwner}/${cleanRepo}` : `/api/github/repos/${cleanOwner}/${cleanRepo}`;
 
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
   };
 
-  if (cleanToken) {
-    headers['Authorization'] = `Bearer ${cleanToken}`;
-  }
-
   let response: Response | null = null;
-  let isFallback = false;
 
   try {
     response = await fetch(targetUrl, { method: 'GET', headers });
   } catch (err: any) {
-    // If proxy failed, fallback directly to GitHub REST API
-    if (hasProxy) {
-      try {
-        response = await fetch(directUrl, { method: 'GET', headers });
-        isFallback = true;
-      } catch (fallbackErr: any) {
-        // Direct fetch also failed
-      }
-    }
+    // Request failed
   }
 
   const latencyMs = Date.now() - start;
@@ -195,7 +179,7 @@ export async function checkGitHubConnection(
     const data = await response.json();
     const perms = data.permissions || { push: true, admin: false, pull: true };
 
-    if (cleanToken && data.permissions && !data.permissions.push) {
+    if (data.permissions && !data.permissions.push) {
       return {
         connected: false,
         repo: fullRepo,
@@ -215,9 +199,7 @@ export async function checkGitHubConnection(
       statusCode: 200,
       lastChecked: new Date().toLocaleTimeString(),
       permissions: perms,
-      message: `Successfully connected to GitHub repository "${data.full_name}" ${
-        isFallback ? '(via direct REST API)' : ''
-      }. Default branch: ${data.default_branch || branch}. Visibility: ${data.private ? 'Private' : 'Public'}.`,
+      message: `Successfully connected to GitHub repository "${data.full_name}". Default branch: ${data.default_branch || branch}. Visibility: ${data.private ? 'Private' : 'Public'}.`,
     };
   }
 
@@ -408,19 +390,18 @@ export async function executeAtomicBulkDeploy(payload: FullPushPayload): Promise
 }
 
 async function performAtomicBulkDeploy(payload: FullPushPayload) {
-  const { deploymentSettings, sessionToken, onProgress, customCommitMessage } = payload;
+  const { deploymentSettings, onProgress, customCommitMessage } = payload;
   const branch = deploymentSettings.githubBranch || 'main';
   const repoString = deploymentSettings.githubRepo || 'ipritamsingh/astro-press';
   const [owner, repoName] = repoString.split('/');
-  const token = (sessionToken || deploymentSettings.githubToken || '').trim();
 
-  if (!token || !owner || !repoName) {
+  if (!owner || !repoName) {
     return {
       success: false,
       totalPushed: 0,
       totalFiles: 0,
-      failedFiles: [{ path: 'auth', error: 'Missing GitHub Token or Repository name' }],
-      message: 'Missing GitHub Personal Access Token or Repository configuration.',
+      failedFiles: [{ path: 'repo', error: 'Missing Repository name' }],
+      message: 'Missing Repository configuration.',
     };
   }
 
@@ -430,10 +411,9 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
 
   const baseApiUrl = useProxy
     ? `${deploymentSettings.cloudflareWorkerUrl!.trim()}/repos/${owner}/${repoName}`
-    : `https://api.github.com/repos/${owner}/${repoName}`;
+    : `/api/github/repos/${owner}/${repoName}`;
 
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
   };
@@ -592,7 +572,7 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
   let activeMenus = localMenus ? [...localMenus] : [];
 
   try {
-    const remoteResult = await fetchRemoteCMSDataFromGitHub(deploymentSettings, token);
+    const remoteResult = await fetchRemoteCMSDataFromGitHub(deploymentSettings);
     if (remoteResult.success && remoteResult.data) {
       const mergedState = mergeCMSStates(
         {
