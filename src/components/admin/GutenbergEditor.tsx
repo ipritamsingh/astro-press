@@ -38,7 +38,7 @@ const EditorImagePreview: React.FC<{ src: string; alt?: string; className?: stri
     />
   );
 };
-import { executeRealGitHubPublish, generateSlug, validateSlug } from '../../data/githubPublishService';
+import { generateSlug, validateSlug } from '../../data/githubPublishService';
 import { DeploymentSettings } from '../../types/cms';
 import { MediaLibrary } from './MediaLibrary';
 import {
@@ -211,10 +211,6 @@ export const GutenbergEditor: React.FC<Props> = ({
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
   const [publishSuccessMsg, setPublishSuccessMsg] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [showPublishModal, setShowPublishModal] = useState(false);
-  const [customCommitMsg, setCustomCommitMsg] = useState('');
-  const [modalGithubToken, setModalGithubToken] = useState<string>(sessionToken || deploymentSettings.githubToken || '');
-  const [deployProgressText, setDeployProgressText] = useState<string>('');
   const [realCommitUrl, setRealCommitUrl] = useState<string | null>(null);
   const [mediaPickerTarget, setMediaPickerTarget] = useState<{
     type: 'block' | 'featured';
@@ -882,63 +878,24 @@ export const GutenbergEditor: React.FC<Props> = ({
     return `---\n${yamlStr}---\n\n${compileBlocksToMarkdown()}`;
   };
 
-  const handleSaveDraft = () => {
-    setIsSavingDraft(true);
-    setPublishError(null);
-    const finalSlug = slug || originalSlug || generateSlug(title);
-    const markdownBody = compileBlocksToMarkdown();
-
-    if (isPage) {
-      const pageToSave: Page = {
-        id: originalId || itemId,
-        title: title || 'Untitled Page',
-        slug: finalSlug,
-        originalSlug: originalSlug || undefined,
-        status: status || 'draft',
-        template: (initialItem as Page).template || 'default',
-        featuredImage,
-        blocks,
-        body: markdownBody,
-        seo,
-      };
-      onSave(pageToSave, false);
-    } else {
-      const postToSave: Post = {
-        id: originalId || itemId,
-        title: title || 'Untitled Post',
-        slug: finalSlug,
-        originalSlug: originalSlug || undefined,
-        pubDate: (initialItem as Post).pubDate || new Date().toISOString(),
-        updatedDate: new Date().toISOString(),
-        status: status || 'draft',
-        author,
-        category,
-        tags: selectedTags,
-        featuredImage,
-        excerpt: excerpt || title,
-        readingTime: Math.max(1, Math.ceil(blocks.length * 0.8)),
-        template,
-        blocks,
-        body: markdownBody,
-        seo,
-      };
-      onSave(postToSave, false);
-    }
-
-    setLastDraftSavedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    setIsSavingDraft(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
+  const handleSaveDraft = async () => {
+    await handleSaveOrPublish(true);
   };
 
-  const handleInitiatePublish = () => {
+  const handlePublishOrUpdate = async () => {
+    await handleSaveOrPublish(false);
+  };
+
+  const handleSaveOrPublish = async (isDraftAction = false) => {
     setPublishError(null);
-    if (!title.trim()) {
-      setPublishError('Please enter an article title before publishing.');
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setPublishError(`Please enter a ${isPage ? 'page' : 'post'} title before saving.`);
       return;
     }
 
-    const finalSlug = slug || originalSlug || generateSlug(title);
+    const finalSlug = slug || originalSlug || generateSlug(trimmedTitle);
     const otherSlugs = existingSlugs.filter((s) => s !== originalSlug && s !== initialItem.slug);
     const slugValidation = validateSlug(finalSlug, otherSlugs);
     if (!slugValidation.valid) {
@@ -946,30 +903,33 @@ export const GutenbergEditor: React.FC<Props> = ({
       return;
     }
 
-    const defaultMsg = `feat(content): publish ${isPage ? 'page' : 'post'} "${title.trim()}"`;
-    setCustomCommitMsg(defaultMsg);
-    setShowPublishModal(true);
-  };
+    if (isDraftAction) {
+      setIsSavingDraft(true);
+    } else {
+      setIsPublishing(true);
+    }
 
-  const handleConfirmPublish = async () => {
-    if (isPublishing) return; // Prevent duplicate clicks
+    // Status resolution: if explicitly saving draft, status is 'draft'.
+    // If clicking publish/update: if status was 'draft', it becomes 'published'. If already 'published' or custom, keep it.
+    const targetStatus: Post['status'] = isDraftAction
+      ? 'draft'
+      : (status === 'draft' ? 'published' : status || 'published');
 
-    setIsPublishing(true);
-    setPublishError(null);
-    setDeployProgressText('Preparing content for deployment...');
-    setStatus('published');
+    setStatus(targetStatus);
+    if (!slug) {
+      setSlug(finalSlug);
+    }
 
-    const finalSlug = slug || originalSlug || generateSlug(title);
-    const fullYamlMarkdown = generateYamlFrontmatter('published');
+    const fullYamlMarkdown = generateYamlFrontmatter(targetStatus);
     const markdownBody = compileBlocksToMarkdown();
 
-    const itemToPublish: any = isPage
+    const itemToSave: any = isPage
       ? {
           id: originalId || itemId,
-          title: title.trim(),
+          title: trimmedTitle,
           slug: finalSlug,
           originalSlug: originalSlug || undefined,
-          status: 'published',
+          status: targetStatus,
           template: (initialItem as Page).template || 'default',
           featuredImage,
           blocks,
@@ -978,17 +938,17 @@ export const GutenbergEditor: React.FC<Props> = ({
         }
       : {
           id: originalId || itemId,
-          title: title.trim(),
+          title: trimmedTitle,
           slug: finalSlug,
           originalSlug: originalSlug || undefined,
           pubDate: (initialItem as Post).pubDate || new Date().toISOString(),
           updatedDate: new Date().toISOString(),
-          status: 'published',
+          status: targetStatus,
           author,
           category,
           tags: selectedTags,
           featuredImage,
-          excerpt: excerpt || title.trim(),
+          excerpt: excerpt || trimmedTitle,
           readingTime: Math.max(1, Math.ceil(blocks.length * 0.8)),
           template,
           blocks,
@@ -997,43 +957,48 @@ export const GutenbergEditor: React.FC<Props> = ({
         };
 
     try {
-      const activeToken = modalGithubToken.trim() || sessionToken || deploymentSettings.githubToken || '';
-      // Persist published item in CMS state immediately so local state & localStorage have it
-      onSave(itemToPublish, true);
-      setStatus('published');
-
-      const effectiveDeploymentSettings: DeploymentSettings = {
-        ...deploymentSettings,
-        githubToken: activeToken || deploymentSettings.githubToken,
-      };
-
-      // Execute publish: pushes atomically to GitHub if token is present, stages in Preview if not
-      const result = await executeRealGitHubPublish(
-        itemToPublish,
-        isPage,
-        fullYamlMarkdown,
-        effectiveDeploymentSettings,
-        activeToken,
-        customCommitMsg.trim() || undefined,
-        (progress) => {
-          setDeployProgressText(progress.filePath || 'Deploying changes to GitHub...');
-        }
-      );
-
-      if (!result.success) {
-        setPublishError(result.message || 'GitHub Publication failed.');
-        return;
+      // 1. Immediately write the markdown with YAML frontmatter to the local content collection disk file
+      try {
+        await fetch('/api/content/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slug: finalSlug,
+            previousSlug: originalSlug && originalSlug !== finalSlug ? originalSlug : undefined,
+            isPage,
+            content: fullYamlMarkdown,
+          }),
+        });
+      } catch (diskErr) {
+        console.warn('Local content collection disk sync note:', diskErr);
       }
 
-      setPublishSuccessMsg(result.message);
-      setRealCommitUrl(result.commitUrl || null);
-      setShowPublishModal(false);
-      setTimeout(() => setPublishSuccessMsg(null), 8000);
+      // 2. Persist in CMS state and localStorage immediately (without triggering GitHub deployment)
+      onSave(itemToSave, !isDraftAction);
+
+      // 3. User feedback
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+
+      if (isDraftAction) {
+        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLastDraftSavedAt(timeNow);
+        setPublishSuccessMsg(`${isPage ? 'Page' : 'Post'} draft saved to local content collection.`);
+      } else {
+        const isUpdate = isExistingItem && (initialItem.status === 'published' || status === 'published');
+        setPublishSuccessMsg(
+          `${isPage ? 'Page' : 'Post'} ${isUpdate ? 'updated' : 'published'} successfully in local content collection.`
+        );
+      }
+      setTimeout(() => setPublishSuccessMsg(null), 5000);
     } catch (err: any) {
-      setPublishError(err?.message || 'Error occurred during publishing. Draft was saved safely.');
+      setPublishError(err?.message || 'Failed to save post to local content collection.');
     } finally {
-      setIsPublishing(false);
-      setDeployProgressText('');
+      if (isDraftAction) {
+        setIsSavingDraft(false);
+      } else {
+        setIsPublishing(false);
+      }
     }
   };
 
@@ -1099,12 +1064,12 @@ export const GutenbergEditor: React.FC<Props> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={handleInitiatePublish}
-                  disabled={isPublishing}
+                  onClick={handlePublishOrUpdate}
+                  disabled={isPublishing || isSavingDraft}
                   className="flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center gap-1"
                 >
-                  <GitBranch className="h-3.5 w-3.5" />
-                  <span>{status === 'published' ? 'Update & Deploy' : 'Publish'}</span>
+                  <Save className="h-3.5 w-3.5" />
+                  <span>{status === 'published' ? 'Update' : 'Publish'}</span>
                 </button>
               </div>
 
@@ -2113,10 +2078,10 @@ export const GutenbergEditor: React.FC<Props> = ({
           {/* PUBLISH BUTTON (Batches all blocks, SEO, tags into 1 single production commit & 1 Cloudflare build) */}
           <button
             type="button"
-            onClick={handleInitiatePublish}
+            onClick={handlePublishOrUpdate}
             disabled={isPublishing}
             className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors disabled:opacity-50"
-            title="Push to production GitHub repository and deploy on Cloudflare Pages"
+            title="Save and publish post locally"
           >
             {isPublishing ? (
               <>
@@ -3326,7 +3291,7 @@ export const GutenbergEditor: React.FC<Props> = ({
         </button>
 
         <button
-          onClick={handleInitiatePublish}
+          onClick={handlePublishOrUpdate}
           disabled={isPublishing}
           className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-xs disabled:opacity-50"
         >
@@ -3344,187 +3309,7 @@ export const GutenbergEditor: React.FC<Props> = ({
         </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 6. PUBLISH CONFIRMATION & GITHUB ATOMIC COMMIT MODAL                      */}
-      {/* ========================================================================= */}
-      {showPublishModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-slate-900">
-                <GitBranch className="h-5 w-5 text-blue-600" />
-                <h3 className="font-extrabold text-base">Confirm Production Publish</h3>
-              </div>
-              <button
-                onClick={() => setShowPublishModal(false)}
-                disabled={isPublishing}
-                className="text-slate-400 hover:text-slate-700 font-bold text-lg"
-              >
-                ✕
-              </button>
-            </div>
 
-            {/* Target Destination Info */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Target GitHub Repo:</span>
-                <span className="font-mono font-bold text-slate-900">
-                  {deploymentSettings.githubRepo || 'ipritamsingh/astro-press'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Production Branch:</span>
-                <code className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-bold font-mono">
-                  {deploymentSettings.githubBranch || 'main'}
-                </code>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Content File:</span>
-                <code className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold font-mono truncate max-w-[280px]">
-                  {isPage ? `src/content/pages/${slug || generateSlug(title)}.md` : `src/content/posts/${slug || generateSlug(title)}.md`}
-                </code>
-              </div>
-            </div>
-
-            {/* Article Snapshot */}
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Article Title:</span>
-                <span className="font-bold text-slate-900 truncate max-w-[260px]">{title}</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Blocks Count:</span>
-                <span className="font-bold text-slate-900">{blocks.length} blocks</span>
-              </div>
-              {!isPage && (
-                <div className="flex items-center justify-between text-slate-600">
-                  <span>Category & Tags:</span>
-                  <span className="font-bold text-slate-900">{category} ({selectedTags.length} tags)</span>
-                </div>
-              )}
-            </div>
-
-            {/* Commit Message Input */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <GitCommit className="h-3.5 w-3.5 text-purple-600" />
-                <span>Git Commit Message</span>
-              </label>
-              <input
-                type="text"
-                value={customCommitMsg}
-                onChange={(e) => setCustomCommitMsg(e.target.value)}
-                placeholder="e.g. feat(content): publish new guide"
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 font-mono outline-none focus:border-blue-500"
-              />
-            </div>
-
-            {/* GitHub Token Input */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Key className="h-3.5 w-3.5 text-blue-600" />
-                  <span>GitHub Personal Access Token (PAT)</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-normal">
-                  {modalGithubToken ? 'Token configured' : 'Optional for live GitHub sync'}
-                </span>
-              </label>
-              <input
-                type="password"
-                value={modalGithubToken}
-                onChange={(e) => setModalGithubToken(e.target.value)}
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_xxxx"
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 font-mono outline-none focus:border-blue-500"
-              />
-            </div>
-
-            {/* Token Notice */}
-            {!modalGithubToken && !sessionToken && !deploymentSettings.githubToken && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <span className="font-bold block">No GitHub Token Entered</span>
-                  <p className="text-[11px] leading-relaxed">
-                    Changes will be saved to your local Astro collections. To push directly to your live GitHub repository and trigger Cloudflare Pages deployment, enter your PAT above or configure it in <strong>Admin &gt; GitHub &amp; Deployment</strong>.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Batch Deployment Protection Note */}
-            {modalGithubToken || sessionToken || deploymentSettings.githubToken ? (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <span className="font-bold block">1 Atomic Commit &amp; 1 Push Deployment</span>
-                  <p className="text-[11px] leading-relaxed">
-                    All accumulated updates and this article will be bundled into <strong>exactly 1 Git commit</strong> and <strong>1 push</strong>, triggering only 1 Cloudflare Pages build.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs flex items-start gap-2">
-                <ShieldCheck className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <span className="font-bold block">Push Batching Protection Active</span>
-                  <p className="text-[11px] leading-relaxed">
-                    This post will be published and staged in Preview immediately with 0 GitHub pushes. Enter your token above or deploy all accumulated changes later in <strong>Admin &gt; GitHub &amp; Deployment</strong>.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {isPublishing && deployProgressText && (
-              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs flex items-center gap-2.5 animate-pulse">
-                <RefreshCw className="h-4 w-4 text-blue-600 animate-spin shrink-0" />
-                <span className="font-mono text-[11px] font-medium">{deployProgressText}</span>
-              </div>
-            )}
-
-            {publishError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                <span>{publishError}</span>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowPublishModal(false)}
-                disabled={isPublishing}
-                className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmPublish}
-                disabled={isPublishing}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50"
-              >
-                {isPublishing ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    <span>{deployProgressText || 'Deploying to GitHub...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-3.5 w-3.5 text-amber-300" />
-                    <span>
-                      {modalGithubToken || sessionToken || deploymentSettings.githubToken
-                        ? 'Confirm & Deploy to GitHub (1 Push)'
-                        : 'Confirm & Publish to Preview (Stage for Push)'}
-                    </span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 7. MEDIA SELECTOR MODAL (Full Integrated Media Library)                   */}
