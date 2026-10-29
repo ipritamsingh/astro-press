@@ -1,5 +1,5 @@
 ---
-title: "New check hai, github token fix"
+title: "Github token fix"
 slug: "new-check"
 pubDate: 2026-10-06T12:23:24.386Z
 status: "published"
