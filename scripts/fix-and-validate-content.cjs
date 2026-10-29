@@ -28,15 +28,33 @@ for (const dir of dirs) {
     const body = match[2];
 
     try {
-      const data = yaml.load(frontmatterRaw);
+      let data;
+      try {
+        data = yaml.load(frontmatterRaw);
+      } catch (parseErr) {
+        console.log(`[NOTICE] Standard YAML parse failed for ${filePath}, attempting manual cleanup...`);
+        // Fallback: extract title, slug, etc. or clean multiline quotes
+        const cleanedFrontmatter = frontmatterRaw
+          .replace(/excerpt:\s*"([\s\S]*?)"(\s*\n|$)/g, (m, p1) => {
+            const clean = p1.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim();
+            return `excerpt: "${clean}"\n`;
+          })
+          .replace(/metaDescription:\s*"([\s\S]*?)"(\s*\n|$)/g, (m, p1) => {
+            const clean = p1.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim();
+            return `metaDescription: "${clean}"\n`;
+          });
+        data = yaml.load(cleanedFrontmatter);
+      }
 
       // Clean excerpt and metaDescription if they contain markdown image syntax starting with !
-      if (data.excerpt && typeof data.excerpt === 'string') {
-        data.excerpt = data.excerpt.replace(/!\[.*?\]\(.*?\)/g, '').trim();
-      }
-      if (data.seo) {
-        if (data.seo.metaDescription && typeof data.seo.metaDescription === 'string') {
-          data.seo.metaDescription = data.seo.metaDescription.replace(/!\[.*?\]\(.*?\)/g, '').trim();
+      if (data) {
+        if (data.excerpt && typeof data.excerpt === 'string') {
+          data.excerpt = data.excerpt.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim();
+        }
+        if (data.seo) {
+          if (data.seo.metaDescription && typeof data.seo.metaDescription === 'string') {
+            data.seo.metaDescription = data.seo.metaDescription.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim();
+          }
         }
       }
 
@@ -46,7 +64,6 @@ for (const dir of dirs) {
         noRefs: true,
         sortKeys: false,
         quotingType: '"',
-        forceQuotes: true,
       });
 
       const newContent = `---\n${newFrontmatter}---${body}`;
@@ -59,7 +76,6 @@ for (const dir of dirs) {
       }
     } catch (err) {
       console.error(`[ERROR] Failed to parse YAML in ${filePath}:`, err.message);
-      // Attempt manual fix if needed
     }
   }
 }
