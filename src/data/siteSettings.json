@@ -3,8 +3,8 @@
   "siteTagline": "WordPress Editorial Ergonomics with Astro Performance",
   "siteDescription": "Production-ready headless CMS builder combining Sveltia CMS, Astro frontend architecture, Gutenberg-style block editor, theme customizer, GitHub backend, and Cloudflare Pages deployment.",
   "siteUrl": "https://astropress.pages.dev",
-  "logoUrl": "",
-  "faviconUrl": "",
+  "logoUrl": "/uploads/1000405169.webp",
+  "faviconUrl": "/uploads/1000405169.webp",
   "defaultOgImage": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80",
   "seoSocialProfiles": {
     "twitterHandle": "@astropress",
@@ -67,162 +67,149 @@
   },
   "adsSettings": {
     "adsEnabled": true,
-    "publisherId": "ca-pub-1234567890123456",
+    "demoModeEnabled": true,
+    "publisherId": "",
     "autoAdsEnabled": false,
-    "slots": [
+    "ads": [
       {
-        "id": "slot-1",
+        "id": "ad-1",
         "name": "Header / Before Post Title Banner",
         "provider": "adsense",
-        "adUnitId": "1234567890",
-        "format": "responsive",
-        "placement": "before_post_title",
+        "adCode": "<ins class=\"adsbygoogle\" style=\"display:block\" data-ad-client=\"ca-pub-1234567890123456\" data-ad-slot=\"1234567890\" data-ad-format=\"auto\" data-full-width-responsive=\"true\"></ins>",
         "enabled": true,
-        "deviceVisibility": "all",
-        "order": 1,
-        "targeting": {
-          "showOnHomepage": false,
-          "showOnPosts": true,
-          "showOnPages": false,
-          "showOnCategories": false,
-          "showOnAuthors": false
+        "displayLocations": [
+          "posts",
+          "homepage"
+        ],
+        "placementRules": {
+          "posts": {
+            "placements": [
+              "before_post_title",
+              "after_post_title",
+              "before_intro",
+              "after_intro",
+              "between_paragraphs",
+              "before_conclusion",
+              "sidebar"
+            ],
+            "insertionInterval": 4
+          },
+          "homepage": {
+            "placements": [
+              "homepage_above_hero",
+              "homepage_below_hero",
+              "homepage_between_category_sections",
+              "homepage_between_post_cards",
+              "before_footer"
+            ],
+            "insertionInterval": 4
+          }
         },
-        "notes": "Displays right above article titles."
+        "deviceVisibility": "all",
+        "notes": "Displays right above article titles.",
+        "createdAt": "2026-10-26T11:44:55.170Z",
+        "includedSlugs": [],
+        "excludedSlugs": []
       },
       {
-        "id": "slot-2",
+        "id": "ad-2",
         "name": "In-Article Paragraph Ad",
         "provider": "adsense",
-        "adUnitId": "9876543210",
-        "format": "in-article",
-        "placement": "between_paragraphs",
+        "adCode": "<ins class=\"adsbygoogle\" style=\"display:block\" data-ad-client=\"ca-pub-1234567890123456\" data-ad-slot=\"9876543210\" data-ad-format=\"auto\" data-full-width-responsive=\"true\"></ins>",
         "enabled": true,
-        "deviceVisibility": "all",
-        "order": 2,
-        "contentParagraphIndex": 2,
-        "targeting": {
-          "showOnHomepage": false,
-          "showOnPosts": true,
-          "showOnPages": false,
-          "showOnCategories": false,
-          "showOnAuthors": false
+        "displayLocations": [
+          "posts"
+        ],
+        "placementRules": {
+          "posts": {
+            "placements": [
+              "between_paragraphs"
+            ],
+            "insertionInterval": 2
+          }
         },
-        "notes": "Inserted automatically after the 2nd paragraph of articles."
+        "deviceVisibility": "all",
+        "notes": "Inserted automatically after the 2nd paragraph of articles.",
+        "createdAt": "2026-10-26T11:44:55.171Z"
       },
       {
-        "id": "slot-3",
-        "name": "Sidebar Sticky Rectangle",
+        "id": "ad-3",
+        "name": "Sidebar Sticky House Banner",
         "provider": "custom_image",
-        "adUnitId": "",
-        "format": "rectangle",
-        "placement": "sidebar",
-        "enabled": true,
-        "deviceVisibility": "desktop",
-        "order": 3,
+        "adCode": "",
         "customImage": {
           "imageUrl": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=600&q=80",
           "destinationUrl": "https://astro-press.pages.dev",
-          "altText": "Sponsored AstroPress Partner Banner",
-          "title": "Sponsored Partner"
+          "altText": "Sponsored Partner Banner"
         },
-        "targeting": {
-          "showOnHomepage": true,
-          "showOnPosts": true,
-          "showOnPages": true,
-          "showOnCategories": true,
-          "showOnAuthors": false
-        },
-        "notes": "House ad banner in article sidebar."
-      },
-      {
-        "id": "slot-4",
-        "name": "Homepage Banner Feed",
-        "provider": "adsense",
-        "adUnitId": "5544332211",
-        "format": "leaderboard",
-        "placement": "between_homepage_sections",
         "enabled": true,
-        "deviceVisibility": "all",
-        "order": 4,
-        "targeting": {
-          "showOnHomepage": true,
-          "showOnPosts": false,
-          "showOnPages": false,
-          "showOnCategories": false,
-          "showOnAuthors": false
+        "displayLocations": [
+          "sidebar"
+        ],
+        "placementRules": {
+          "sidebar": {
+            "placements": [
+              "after_sidebar"
+            ]
+          }
         },
-        "notes": "Displayed between homepage content sections."
+        "deviceVisibility": "desktop",
+        "notes": "House ad banner in article sidebar.",
+        "createdAt": "2026-10-26T11:44:55.171Z"
       },
       {
-        "id": "slot-5",
+        "id": "ad-4",
         "name": "Homepage Below Hero Feature Ad",
         "provider": "adsense",
-        "adUnitId": "7788990011",
-        "format": "responsive",
-        "placement": "homepage_below_hero",
+        "adCode": "<ins class=\"adsbygoogle\" style=\"display:block\" data-ad-client=\"ca-pub-1234567890123456\" data-ad-slot=\"7788990011\" data-ad-format=\"auto\" data-full-width-responsive=\"true\"></ins>",
         "enabled": true,
-        "deviceVisibility": "all",
-        "order": 5,
-        "targeting": {
-          "showOnHomepage": true,
-          "showOnPosts": false,
-          "showOnPages": false,
-          "showOnCategories": false,
-          "showOnAuthors": false
+        "displayLocations": [
+          "homepage"
+        ],
+        "placementRules": {
+          "homepage": {
+            "placements": [
+              "after_hero"
+            ]
+          }
         },
-        "notes": "Prominent banner right below the homepage hero."
+        "deviceVisibility": "all",
+        "notes": "Prominent banner right below the homepage hero.",
+        "createdAt": "2026-10-26T11:44:55.171Z"
       },
       {
-        "id": "slot-6",
-        "name": "Homepage In-Feed Card Ad",
-        "provider": "custom_image",
-        "adUnitId": "",
-        "format": "rectangle",
-        "placement": "homepage_between_post_cards",
+        "id": "ad-1793015315721",
+        "name": "New Ad Unit",
+        "provider": "adsense",
+        "adCode": "<script async src=\"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js\"></script>\n<ins class=\"adsbygoogle\" style=\"display:block\" data-ad-client=\"ca-pub-0000000000000000\" data-ad-slot=\"1234567890\" data-ad-format=\"auto\" data-full-width-responsive=\"true\"></ins>\n<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>",
         "enabled": true,
+        "displayLocations": [
+          "footer"
+        ],
+        "placementRules": {
+          "posts": {
+            "placements": [
+              "after_intro"
+            ],
+            "insertionInterval": 2
+          },
+          "footer": {
+            "placements": [
+              "before_site_footer",
+              "after_main_content"
+            ]
+          }
+        },
         "deviceVisibility": "all",
-        "order": 6,
-        "customImage": {
-          "imageUrl": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80",
-          "destinationUrl": "https://astro-press.pages.dev",
-          "altText": "AstroPress High Performance CMS",
-          "title": "Discover Next-Gen Jamstack Architecture"
-        },
-        "targeting": {
-          "showOnHomepage": true,
-          "showOnPosts": false,
-          "showOnPages": false,
-          "showOnCategories": false,
-          "showOnAuthors": false
-        },
-        "notes": "In-feed sponsored ad matching post card dimensions."
+        "includedSlugs": [],
+        "excludedSlugs": [],
+        "notes": "",
+        "createdAt": "2026-10-26T11:48:35.721Z"
       }
     ],
-    "homepageAdsConfig": {
-      "enabled": true,
-      "aboveHero": { "enabled": false, "slotId": "auto", "deviceVisibility": "all" },
-      "belowHero": { "enabled": true, "slotId": "slot-5", "deviceVisibility": "all" },
-      "betweenSections": { "enabled": true, "slotId": "slot-4", "deviceVisibility": "all" },
-      "betweenCategorySections": { "enabled": false, "slotId": "auto", "deviceVisibility": "all" },
-      "betweenPostCards": { "enabled": true, "slotId": "slot-6", "deviceVisibility": "all", "cardInterval": 2 },
-      "beforeFooter": { "enabled": true, "slotId": "auto", "deviceVisibility": "all" },
-      "excludedSections": []
-    },
-    "demoAdConfig": {
-      "enabled": false,
-      "publicTestingEnabled": false,
-      "template": "saas",
-      "heading": "Build & Deploy Edge Applications in Minutes",
-      "description": "Experience sub-second TTFB, Git-native headless CMS, and zero server maintenance on Cloudflare Pages.",
-      "buttonText": "Start Free Trial →",
-      "destinationUrl": "https://astro-press.pages.dev",
-      "imageUrl": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
-      "bgColor": "#0F172A",
-      "textColor": "#F8FAFC",
-      "accentColor": "#3B82F6",
-      "badgeText": "DEMO AD — NOT A REAL AD",
-      "minHeight": 120
-    }
+    "homepageAdsConfig": {},
+    "demoAdConfig": {},
+    "slots": []
   },
   "scriptsSettings": {
     "integrations": [
@@ -270,5 +257,20 @@
       "noticeText": "We use cookies and similar technologies to enhance your experience, analyze site traffic, and serve personalized advertisements. You can manage your preferences below.",
       "privacyPolicyUrl": "/privacy-policy/"
     }
-  }
+  },
+  "integrationsSettings": {
+    "ga4Enabled": false,
+    "ga4MeasurementId": "",
+    "ga4AnonymizeIp": true,
+    "gscEnabled": false,
+    "gscVerificationCode": "",
+    "metaPixelEnabled": false,
+    "metaPixelId": "",
+    "adsenseEnabled": false,
+    "adsensePublisherId": "",
+    "adsenseAutoAds": false,
+    "consentBannerEnabled": false,
+    "scripts": []
+  },
+  "focusKeyword": "Astro Sveltia CMS"
 }
