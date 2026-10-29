@@ -12,7 +12,6 @@ import categoriesJson from '../../data/categories.json';
 import menusJson from '../../data/menus.json';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('posts');
   const categoriesList = categoriesJson?.categories || initialCategories;
 
   return categoriesList.map((cat: any) => ({

@@ -173,7 +173,7 @@ export default defineConfig({
     server: {
       cors: true,
       allowedHosts: true,
-      hmr: {
+      ws: {
         protocol: 'wss',
         clientPort: 443,
       },

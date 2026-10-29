@@ -35,8 +35,10 @@ const pages = defineCollection({
   schema: z.object({
     title: z.string(),
     slug: z.string().optional(),
+    pubDate: z.coerce.date().optional(),
     template: z.enum(['default', 'full-width', 'contact', 'about', 'landing']).default('default'),
     draft: z.boolean().default(false),
+    featuredImage: z.string().optional(),
     blocks: z.array(z.any()).optional(),
     // Mirrors the posts collection. Previously absent, which made a per-page
     // SEO title, description, canonical or robots override structurally
