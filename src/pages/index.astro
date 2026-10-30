@@ -31,7 +31,16 @@ const serverPosts = collectionPosts.map((post) => ({
   seo: post.data.seo || {},
 }));
 
-const publishedPosts = serverPosts.filter((p) => p.status !== 'draft');
+const publishedPosts = serverPosts
+  .filter((p) => p.status !== 'draft' && p.status !== 'trash')
+  .sort((a, b) => {
+    const timeA = new Date(a.pubDate || 0).getTime();
+    const timeB = new Date(b.pubDate || 0).getTime();
+    if (timeB !== timeA) {
+      return timeB - timeA;
+    }
+    return (a.slug || '').localeCompare(b.slug || '');
+  });
 const seedCategories: any = (categoriesJson as any)?.categories || (categoriesJson as any) || [];
 const seedMenus: any = (menusJson as any)?.menus || (menusJson as any) || [];
 const seedTheme: any = (themeSettingsJson as any) || {};

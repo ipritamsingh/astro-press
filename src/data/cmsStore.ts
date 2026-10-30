@@ -557,22 +557,27 @@ export function useCMS(seed?: Partial<CMSDataState>) {
   const savePost = (post: Post, isPublishAction = false) => {
     const existingIndex = data.posts.findIndex(
       (p) =>
-        (post.id && p.id === post.id) ||
-        (post.slug && p.slug === post.slug) ||
-        (post.originalSlug && (p.slug === post.originalSlug || p.id === `post-${post.originalSlug}`)) ||
-        (p.id && post.slug && p.id === `post-${post.slug}`)
+        (post.id && p.id === p.id && p.id === post.id) ||
+        (post.slug && p.slug === p.slug) ||
+        (post.originalSlug && (p.slug === post.originalSlug || p.originalSlug === p.slug || p.slug === post.originalSlug)) ||
+        (p.id && post.slug && p.id === `post-${post.slug}`) ||
+        (post.id && post.slug && p.id === `post-${post.slug}`) ||
+        (post.originalSlug && p.id === `post-${post.originalSlug}`)
     );
     let newPosts: Post[];
     if (existingIndex >= 0) {
       newPosts = [...data.posts];
       const existing = newPosts[existingIndex];
+      const preservedPubDate = existing.pubDate || post.pubDate || new Date().toISOString();
       newPosts[existingIndex] = {
         ...existing,
         ...post,
-        id: existing.id || post.id,
+        id: existing.id || post.id || `post-${post.slug}`,
+        pubDate: preservedPubDate,
+        updatedDate: new Date().toISOString(),
       };
     } else {
-      newPosts = [post, ...data.posts];
+      newPosts = [{ ...post, id: post.id || `post-${post.slug}-${Date.now()}` }, ...data.posts];
     }
     const updated = { ...data, posts: newPosts };
     saveStoredData(updated);
@@ -580,7 +585,7 @@ export function useCMS(seed?: Partial<CMSDataState>) {
 
     // Only generate a production Git commit and Cloudflare deployment trigger when explicitly publishing
     if (isPublishAction || post.status === 'published') {
-      recordCommit(`feat(post): publish article "${post.title}" [/posts/${post.slug}]`, updated);
+      recordCommit(`feat(post): update/publish article "${post.title}" [/posts/${post.slug}]`, updated);
     }
   };
 
@@ -682,10 +687,11 @@ export function useCMS(seed?: Partial<CMSDataState>) {
   const savePage = (page: Page, isPublishAction = false) => {
     const existingIndex = data.pages.findIndex(
       (p) =>
-        (page.id && p.id === page.id) ||
+        (page.id && p.id === p.id && p.id === page.id) ||
         (page.slug && p.slug === page.slug) ||
-        (page.originalSlug && (p.slug === page.originalSlug || p.id === `page-${page.originalSlug}`)) ||
-        (p.id && page.slug && p.id === `page-${page.slug}`)
+        (page.originalSlug && (p.slug === page.originalSlug || p.originalSlug === p.slug)) ||
+        (p.id && page.slug && p.id === `page-${page.slug}`) ||
+        (page.id && page.slug && p.id === `page-${p.slug}`)
     );
     let newPages: Page[];
     if (existingIndex >= 0) {
@@ -694,17 +700,17 @@ export function useCMS(seed?: Partial<CMSDataState>) {
       newPages[existingIndex] = {
         ...existing,
         ...page,
-        id: existing.id || page.id,
+        id: existing.id || page.id || `page-${page.slug}`,
       };
     } else {
-      newPages = [...data.pages, page];
+      newPages = [...data.pages, { ...page, id: page.id || `page-${page.slug}-${Date.now()}` }];
     }
     const updated = { ...data, pages: newPages };
     saveStoredData(updated);
     setData(updated);
 
     if (isPublishAction || page.status === 'published') {
-      recordCommit(`feat(page): publish static page "${page.title}" [/${page.slug}]`, updated);
+      recordCommit(`feat(page): update/publish static page "${page.title}" [/${page.slug}]`, updated);
     }
   };
 

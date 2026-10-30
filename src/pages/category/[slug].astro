@@ -44,7 +44,12 @@ const allPublishedPosts = rawCollectionPosts
     body: p.body || '',
     seo: p.data.seo || {},
   }))
-  .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+  .sort((a, b) => {
+    const timeA = new Date(a.pubDate || 0).getTime();
+    const timeB = new Date(b.pubDate || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return (a.slug || '').localeCompare(b.slug || '');
+  });
 
 const allPages = rawCollectionPages.map((p) => ({
   id: p.id,

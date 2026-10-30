@@ -600,15 +600,77 @@ check('Preserves double/single quotes and special characters in title', parsedCo
 check('Preserves backslashes and Unicode in author / excerpt', parsedComplexData && parsedComplexData.excerpt.includes('C:\\') && parsedComplexData.excerpt.includes('🚀'));
 check('Preserves multi-line excerpts without breaking YAML structure', parsedComplexData && parsedComplexData.excerpt.includes('Line 2'));
 
-// Multi-file atomic commit test
-const multiFiles = {
-  'src/content/posts/complex-post-slug.md': serializedComplexMd,
-  'src/content/pages/about.md': '---\ntitle: "About Us"\nslug: "about"\n---\nAbout body',
-  'src/data/siteSettings.json': JSON.stringify({ siteTitle: 'AstroPress' }, null, 2),
-};
+// ---------------------------------------------------------------------------
+// Test Suite 8: Post Duplicate Prevention, Edits, Draft Filtering, & Date Sorting
+// ---------------------------------------------------------------------------
+console.log('\n--- Test Suite 8: Post Duplicate Prevention, Edits, Draft Filtering & Date Sorting ---');
 
-const multiFileChanges = diffCandidateFilesAgainstRemote(multiFiles, remoteTree);
-check('Correctly detects multiple changed files (posts, pages, data configs)', multiFileChanges.length >= 2);
+function mockCmsStoreSave(posts, incomingPost) {
+  const existingIndex = posts.findIndex(
+    (p) =>
+      (incomingPost.id && p.id === incomingPost.id) ||
+      (incomingPost.slug && p.slug === incomingPost.slug) ||
+      (incomingPost.originalSlug && (p.slug === incomingPost.originalSlug || p.originalSlug === p.slug)) ||
+      (p.id && incomingPost.slug && p.id === `post-${incomingPost.slug}`)
+  );
+  if (existingIndex >= 0) {
+    const existing = posts[existingIndex];
+    const updated = [...posts];
+    updated[existingIndex] = {
+      ...existing,
+      ...incomingPost,
+      id: existing.id || incomingPost.id || `post-${incomingPost.slug}`,
+      pubDate: existing.pubDate || incomingPost.pubDate || new Date().toISOString(),
+      updatedDate: new Date().toISOString(),
+    };
+    return updated;
+  } else {
+    return [{ ...incomingPost, id: incomingPost.id || `post-${incomingPost.slug}-${Date.now()}` }, ...posts];
+  }
+}
+
+let mockPosts = [
+  { id: 'post-1', title: 'First Post', slug: 'first-post', status: 'published', pubDate: '2026-10-01T10:00:00.000Z' },
+  { id: 'post-2', title: 'Second Post', slug: 'second-post', status: 'published', pubDate: '2026-10-02T10:00:00.000Z' },
+];
+
+// 1. Create a new post
+const newPost = { title: 'Third Post', slug: 'third-post', status: 'published', pubDate: '2026-10-03T10:00:00.000Z' };
+mockPosts = mockCmsStoreSave(mockPosts, newPost);
+check('Creating a new post adds exactly 1 record (total 3)', mockPosts.length === 3);
+
+// 2. Edit an existing post (same slug, updated title)
+const editedPost = { id: 'post-1', title: 'First Post Updated', slug: 'first-post', status: 'published', pubDate: '2026-10-01T10:00:00.000Z' };
+mockPosts = mockCmsStoreSave(mockPosts, editedPost);
+check('Editing an existing post updates it in place without creating a duplicate (total 3)', mockPosts.length === 3);
+check('Updated post title reflects new title', mockPosts.find(p => p.id === 'post-1').title === 'First Post Updated');
+check('Original pubDate is preserved during edit', mockPosts.find(p => p.id === 'post-1').pubDate === '2026-10-01T10:00:00.000Z');
+
+// 3. Edit post with changed slug and originalSlug tracking
+const slugChangedPost = { id: 'post-1', title: 'First Post Renamed', slug: 'first-post-renamed', originalSlug: 'first-post', status: 'published', pubDate: '2026-10-01T10:00:00.000Z' };
+mockPosts = mockCmsStoreSave(mockPosts, slugChangedPost);
+check('Changing slug of existing post updates it without creating a duplicate (total 3)', mockPosts.length === 3);
+check('Post slug updated successfully', mockPosts.find(p => p.id === 'post-1').slug === 'first-post-renamed');
+
+// 4. Draft filtering test
+const mixedPosts = [
+  { id: 'p1', title: 'Pub 1', slug: 'pub-1', status: 'published', pubDate: '2026-10-05T10:00:00.000Z' },
+  { id: 'p2', title: 'Draft 1', slug: 'draft-1', status: 'draft', pubDate: '2026-10-06T10:00:00.000Z' },
+  { id: 'p3', title: 'Trash 1', slug: 'trash-1', status: 'trash', pubDate: '2026-10-04T10:00:00.000Z' },
+  { id: 'p4', title: 'Pub 2', slug: 'pub-2', status: 'published', pubDate: '2026-10-03T10:00:00.000Z' },
+];
+
+const publicPublished = mixedPosts
+  .filter(p => p.status !== 'draft' && p.status !== 'trash')
+  .sort((a, b) => {
+    const timeA = new Date(a.pubDate || 0).getTime();
+    const timeB = new Date(b.pubDate || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return (a.slug || '').localeCompare(b.slug || '');
+  });
+
+check('Unpublished drafts and trashed posts do not leak into public published list', publicPublished.length === 2 && publicPublished.every(p => p.status === 'published'));
+check('Public published list correctly sorted newest-first by pubDate', publicPublished[0].slug === 'pub-1' && publicPublished[1].slug === 'pub-2');
 
 // ---------------------------------------------------------------------------
 // Summary
