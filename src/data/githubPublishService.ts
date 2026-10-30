@@ -368,81 +368,71 @@ export async function calculateGitBlobSha(content: string): Promise<string> {
 }
 
 function formatPostToMarkdown(post: Post): string {
-  const cleanTitle = (post.title || '').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').trim();
-  const cleanExcerpt = (post.excerpt || '')
-    .replace(/!\[.*?\]\(.*?\)/g, '')
-    .replace(/"/g, '\\"')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
-  const cleanMetaTitle = (post.seo?.metaTitle || post.title || '')
-    .replace(/"/g, '\\"')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
-  const cleanMetaDesc = (post.seo?.metaDescription || post.excerpt || '')
-    .replace(/!\[.*?\]\(.*?\)/g, '')
-    .replace(/"/g, '\\"')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
-  const cleanAuthor = (post.author || 'Amit Singh')
-    .replace(/"/g, '\\"')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
-  const cleanCategory = (post.category || 'General')
-    .replace(/"/g, '\\"')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
+  const cleanExcerpt = (post.excerpt || '').replace(/!\[.*?\]\(.*?\)/g, '').trim();
+  const cleanMetaDesc = (post.seo?.metaDescription || post.excerpt || '').replace(/!\[.*?\]\(.*?\)/g, '').trim();
+
+  const data = {
+    title: post.title || '',
+    slug: post.slug || '',
+    pubDate: post.pubDate || new Date().toISOString(),
+    status: post.status || 'published',
+    draft: Boolean(post.status === 'draft'),
+    author: post.author || 'Amit Singh',
+    category: post.category || 'General',
+    tags: post.tags || [],
+    featuredImage: post.featuredImage || '',
+    excerpt: cleanExcerpt,
+    readingTime: post.readingTime || Math.max(1, Math.ceil((post.blocks || []).length * 0.8)),
+    template: post.template || 'standard',
+    blocks: post.blocks || [],
+    seo: {
+      metaTitle: post.seo?.metaTitle || post.title || '',
+      metaDescription: cleanMetaDesc,
+      focusKeyword: post.seo?.focusKeyword || '',
+      robotsIndex: post.seo?.robotsIndex !== false,
+      robotsFollow: post.seo?.robotsFollow !== false,
+    },
+  };
+
+  const yamlStr = yaml.dump(data, {
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false,
+  });
 
   return `---
-title: "${cleanTitle}"
-slug: "${post.slug}"
-pubDate: ${post.pubDate || new Date().toISOString()}
-status: "${post.status || 'published'}"
-draft: ${post.status === 'draft'}
-author: "${cleanAuthor}"
-category: "${cleanCategory}"
-tags: [${(post.tags || []).map((t) => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]
-featuredImage: "${post.featuredImage || ''}"
-excerpt: "${cleanExcerpt}"
-readingTime: ${post.readingTime || Math.max(1, Math.ceil((post.blocks || []).length * 0.8))}
-template: "${post.template || 'standard'}"
-blocks: ${JSON.stringify(post.blocks || [])}
-seo:
-  metaTitle: "${cleanMetaTitle}"
-  metaDescription: "${cleanMetaDesc}"
-  focusKeyword: "${(post.seo?.focusKeyword || '').replace(/"/g, '\\"')}"
-  robotsIndex: ${post.seo?.robotsIndex !== false}
-  robotsFollow: ${post.seo?.robotsFollow !== false}
----
+${yamlStr}---
 
 ${post.body || ''}`;
 }
 
 function formatPageToMarkdown(page: Page): string {
-  const cleanTitle = (page.title || '').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').trim();
-  const cleanMetaTitle = (page.seo?.metaTitle || page.title || '')
-    .replace(/"/g, '\\"')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
-  const cleanMetaDesc = (page.seo?.metaDescription || '')
-    .replace(/!\[.*?\]\(.*?\)/g, '')
-    .replace(/"/g, '\\"')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
+  const cleanMetaDesc = (page.seo?.metaDescription || '').replace(/!\[.*?\]\(.*?\)/g, '').trim();
+
+  const data = {
+    title: page.title || '',
+    slug: page.slug || '',
+    pubDate: (page as any).pubDate || new Date().toISOString(),
+    template: page.template || 'default',
+    draft: Boolean(page.status === 'draft'),
+    blocks: page.blocks || [],
+    seo: {
+      metaTitle: page.seo?.metaTitle || page.title || '',
+      metaDescription: cleanMetaDesc,
+      focusKeyword: page.seo?.focusKeyword || '',
+      robotsIndex: page.seo?.robotsIndex !== false,
+      robotsFollow: page.seo?.robotsFollow !== false,
+    },
+  };
+
+  const yamlStr = yaml.dump(data, {
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false,
+  });
 
   return `---
-title: "${cleanTitle}"
-slug: "${page.slug}"
-pubDate: ${(page as any).pubDate || new Date().toISOString()}
-template: "${page.template || 'default'}"
-draft: ${page.status === 'draft'}
-blocks: ${JSON.stringify(page.blocks || [])}
-seo:
-  metaTitle: "${cleanMetaTitle}"
-  metaDescription: "${cleanMetaDesc}"
-  focusKeyword: "${(page.seo?.focusKeyword || '').replace(/"/g, '\\"')}"
-  robotsIndex: ${page.seo?.robotsIndex !== false}
-  robotsFollow: ${page.seo?.robotsFollow !== false}
----
+${yamlStr}---
 
 ${page.body || ''}`;
 }

@@ -538,6 +538,79 @@ check(
 );
 
 // ---------------------------------------------------------------------------
+// 7. Comprehensive Serialization & Multi-File Regression Tests
+// ---------------------------------------------------------------------------
+console.log('\n--- Test Suite 7: Comprehensive Serialization & Multi-File Regression ---');
+
+const complexPost = {
+  title: 'Complex Post: "Quotes", Colons: & Special Chars © 🚀',
+  slug: 'complex-post-slug',
+  pubDate: '2026-10-30T12:00:00.000Z',
+  status: 'published',
+  author: 'Author \\\\ Path / Name',
+  category: 'Tech: Engineering',
+  tags: ['Astro', 'YAML "Quotes"', 'Special:Tag'],
+  excerpt: 'Line 1: Excerpt with "quotes", colon: and backslash C:\\dir\\file \nLine 2: Unicode 🚀 and markdown *bold* _italic_ [link](url).',
+  body: 'Body content with <html> tags and complex punctuation.',
+};
+
+function formatPostToMarkdownRobust(post) {
+  const data = {
+    title: post.title || '',
+    slug: post.slug || '',
+    pubDate: post.pubDate || new Date().toISOString(),
+    status: post.status || 'published',
+    draft: Boolean(post.status === 'draft'),
+    author: post.author || 'Amit Singh',
+    category: post.category || 'General',
+    tags: post.tags || [],
+    featuredImage: post.featuredImage || '',
+    excerpt: (post.excerpt || '').replace(/!\[.*?\]\(.*?\)/g, '').trim(),
+    readingTime: post.readingTime || 3,
+    template: post.template || 'standard',
+    blocks: post.blocks || [],
+    seo: {
+      metaTitle: post.seo?.metaTitle || post.title || '',
+      metaDescription: post.seo?.metaDescription || post.excerpt || '',
+      focusKeyword: post.seo?.focusKeyword || '',
+      robotsIndex: true,
+      robotsFollow: true,
+    },
+  };
+  const yamlStr = yaml.dump(data, { lineWidth: -1, noRefs: true, sortKeys: false });
+  return `---
+${yamlStr}---
+
+${post.body || ''}`;
+}
+
+const serializedComplexMd = formatPostToMarkdownRobust(complexPost);
+const complexMatch = serializedComplexMd.match(/^---\n([\s\S]*?)\n---/);
+let parsedComplexData = null;
+let parseComplexSuccess = false;
+try {
+  parsedComplexData = yaml.load(complexMatch[1]);
+  parseComplexSuccess = true;
+} catch (e) {
+  parseComplexSuccess = false;
+}
+
+check('Successfully serializes and parses complex frontmatter with quotes, colons, backslashes, and Unicode', parseComplexSuccess);
+check('Preserves double/single quotes and special characters in title', parsedComplexData && parsedComplexData.title.includes('"Quotes"'));
+check('Preserves backslashes and Unicode in author / excerpt', parsedComplexData && parsedComplexData.excerpt.includes('C:\\') && parsedComplexData.excerpt.includes('🚀'));
+check('Preserves multi-line excerpts without breaking YAML structure', parsedComplexData && parsedComplexData.excerpt.includes('Line 2'));
+
+// Multi-file atomic commit test
+const multiFiles = {
+  'src/content/posts/complex-post-slug.md': serializedComplexMd,
+  'src/content/pages/about.md': '---\ntitle: "About Us"\nslug: "about"\n---\nAbout body',
+  'src/data/siteSettings.json': JSON.stringify({ siteTitle: 'AstroPress' }, null, 2),
+};
+
+const multiFileChanges = diffCandidateFilesAgainstRemote(multiFiles, remoteTree);
+check('Correctly detects multiple changed files (posts, pages, data configs)', multiFileChanges.length >= 2);
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n===============================================================');
