@@ -1,11 +1,12 @@
 /**
  * AstroPress Cloudflare Pages Function: /api/github/*
  *
- * Secure server-side proxy for GitHub API operations:
+ * Secure server-side proxy and environment verification for GitHub API operations:
  * - Reads token exclusively from env.GITHUB_PAT secret.
  * - Authenticates admin session against Cloudflare D1.
  * - Validates allowed Git Data API methods and paths.
- * - Never leaks or echoes GITHUB_PAT to client or API responses.
+ * - Supports /api/github/verify-env to diagnose configuration without exposing secrets.
+ * - Never leaks or echoes GITHUB_PAT to client, logs, or API responses.
  */
 
 interface Env {
@@ -61,13 +62,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return json({ error: 'Method not allowed.' }, 405);
   }
 
-  // 2. Validate Server-Side PAT Secret
-  const pat = env.GITHUB_PAT;
-  if (!pat) {
-    return json({ error: 'GitHub PAT secret (GITHUB_PAT) is not configured on the server.' }, 503);
-  }
-
-  // 3. Authenticate Administrator Session in D1
+  // 2. Authenticate Administrator Session in D1
   if (!env.DB) {
     return json({ error: 'Database binding missing.' }, 500);
   }
@@ -107,19 +102,210 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return json({ error: 'Unauthorized or expired session.' }, 401);
   }
 
-  // 4. Validate Path
   const url = new URL(request.url);
   const decoded = decodeURIComponent(url.pathname.replace(/^\/api\/github/, '')).replace(/\/{2,}/g, '/');
   if (decoded.includes('..') || decoded.includes('\\')) {
     return json({ error: 'Invalid path.' }, 400);
   }
 
+  const pat = env.GITHUB_PAT?.trim();
+
+  // 3. Special Environment Verification Endpoint: /api/github/verify-env
+  if (decoded === '/verify-env' || decoded === '/verify-env/') {
+    if (request.method !== 'GET') {
+      return json({ error: 'Method not allowed. Use GET.' }, 405);
+    }
+
+    const owner = (url.searchParams.get('owner') || '').trim();
+    const repo = (url.searchParams.get('repo') || '').trim();
+    const branch = (url.searchParams.get('branch') || 'main').trim();
+
+    if (!pat) {
+      return json(
+        {
+          configured: false,
+          authenticated: true,
+          repo: `${owner}/${repo}`,
+          branch,
+          status: 'missing_config',
+          message: 'GitHub PAT secret (GITHUB_PAT) is not configured in Cloudflare environment variables.',
+        },
+        200
+      );
+    }
+
+    try {
+      // Step A: Test PAT authentication
+      const userRes = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${pat}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'AstroPress-CMS-Server',
+        },
+      });
+
+      const rateLimit = {
+        remaining: userRes.headers.get('x-ratelimit-remaining'),
+        limit: userRes.headers.get('x-ratelimit-limit'),
+        reset: userRes.headers.get('x-ratelimit-reset'),
+      };
+
+      if (userRes.status === 401) {
+        return json(
+          {
+            configured: true,
+            authenticated: true,
+            githubAuth: false,
+            repo: `${owner}/${repo}`,
+            branch,
+            status: 'auth_failed',
+            message: 'GITHUB_PAT secret is set, but GitHub rejected it (401 Unauthorized: bad credentials or expired).',
+            rateLimit,
+          },
+          200
+        );
+      }
+
+      const userData = await userRes.json().catch(() => ({}));
+      const githubLogin = userData.login || 'authenticated';
+
+      if (!owner || !repo) {
+        return json(
+          {
+            configured: true,
+            authenticated: true,
+            githubAuth: true,
+            githubUser: githubLogin,
+            status: 'no_repo_provided',
+            message: `GitHub token verified for user "${githubLogin}". Provide repository owner and name to verify repository permissions.`,
+            rateLimit,
+          },
+          200
+        );
+      }
+
+      // Step B: Test repository access and push permissions
+      const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+        headers: {
+          Authorization: `Bearer ${pat}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'AstroPress-CMS-Server',
+        },
+      });
+
+      if (repoRes.status === 404) {
+        return json(
+          {
+            configured: true,
+            authenticated: true,
+            githubAuth: true,
+            githubUser: githubLogin,
+            repo: `${owner}/${repo}`,
+            branch,
+            repoExists: false,
+            status: 'repo_not_found',
+            message: `Repository "${owner}/${repo}" was not found (404 Not Found). Verify spelling or grant repository access to the token.`,
+            rateLimit,
+          },
+          200
+        );
+      }
+
+      if (repoRes.status === 403) {
+        const errBody = await repoRes.json().catch(() => ({}));
+        return json(
+          {
+            configured: true,
+            authenticated: true,
+            githubAuth: true,
+            githubUser: githubLogin,
+            repo: `${owner}/${repo}`,
+            branch,
+            status: 'forbidden',
+            message: `Access to "${owner}/${repo}" forbidden (403): ${errBody.message || 'Rate limit or missing token repository permission'}.`,
+            rateLimit,
+          },
+          200
+        );
+      }
+
+      const repoData = await repoRes.json().catch(() => ({}));
+      const permissions = repoData.permissions || { push: true, pull: true, admin: false };
+      const hasPush = Boolean(permissions.push);
+
+      // Step C: Test target branch existence
+      const branchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`, {
+        headers: {
+          Authorization: `Bearer ${pat}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'AstroPress-CMS-Server',
+        },
+      });
+
+      let branchExists = false;
+      let headSha: string | null = null;
+      if (branchRes.ok) {
+        branchExists = true;
+        const branchData = await branchRes.json().catch(() => ({}));
+        headSha = branchData.object?.sha || null;
+      }
+
+      let status = 'verified';
+      let message = `Edge environment, GitHub token, and repository "${owner}/${repo}" (${branch}) verified successfully with push permissions.`;
+
+      if (!hasPush) {
+        status = 'no_push_permission';
+        message = `Connected to repository "${owner}/${repo}", but token lacks push/write permissions. Fine-grained PAT needs "Contents: Read and write" access.`;
+      } else if (!branchExists) {
+        status = 'branch_not_found';
+        message = `Connected to "${owner}/${repo}", but target branch "${branch}" was not found. Default branch is "${repoData.default_branch || 'main'}".`;
+      }
+
+      return json(
+        {
+          configured: true,
+          authenticated: true,
+          githubAuth: true,
+          githubUser: githubLogin,
+          repo: repoData.full_name || `${owner}/${repo}`,
+          branch,
+          repoExists: true,
+          isPrivate: Boolean(repoData.private),
+          defaultBranch: repoData.default_branch || 'main',
+          hasPushPermission: hasPush,
+          branchExists,
+          headSha: headSha ? headSha.substring(0, 7) : null,
+          rateLimit,
+          status,
+          message,
+        },
+        200
+      );
+    } catch (err: any) {
+      return json(
+        {
+          configured: true,
+          authenticated: true,
+          status: 'network_error',
+          message: `Network error connecting to GitHub: ${err.message || 'Connection failure'}`,
+        },
+        502
+      );
+    }
+  }
+
+  // 4. Validate Server-Side PAT Secret for all other proxy routes
+  if (!pat) {
+    return json({ error: 'GitHub PAT secret (GITHUB_PAT) is not configured on the server.' }, 503);
+  }
+
+  // 5. Validate Path against allowed Git Data API endpoints
   const match = ALLOWED_PATH.exec(decoded);
   if (!match) {
     return json({ error: 'Path not allowed.' }, 404);
   }
 
-  // 5. Optional Repository allowlist validation
+  // 6. Optional Repository allowlist validation
   if (env.ALLOWED_REPO) {
     const requestedRepo = `${match[1]}/${match[2]}`.toLowerCase();
     if (requestedRepo !== env.ALLOWED_REPO.trim().toLowerCase()) {
@@ -127,7 +313,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
   }
 
-  // 6. Upstream proxy request to GitHub API
+  // 7. Upstream proxy request to GitHub API
   const upstreamHeaders = new Headers();
   upstreamHeaders.set('User-Agent', 'AstroPress-CMS-Server');
   upstreamHeaders.set('Accept', request.headers.get('Accept') || 'application/vnd.github.v3+json');

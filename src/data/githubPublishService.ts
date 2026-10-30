@@ -1,3 +1,4 @@
+import * as yaml from 'js-yaml';
 import {
   Post,
   Page,
@@ -56,6 +57,79 @@ export interface ConnectionStatus {
     admin: boolean;
     pull: boolean;
   };
+}
+
+export interface EdgeEnvironmentStatus {
+  configured: boolean;
+  authenticated: boolean;
+  githubAuth?: boolean;
+  githubUser?: string;
+  repo?: string;
+  branch?: string;
+  repoExists?: boolean;
+  isPrivate?: boolean;
+  defaultBranch?: string;
+  hasPushPermission?: boolean;
+  branchExists?: boolean;
+  headSha?: string | null;
+  rateLimit?: {
+    remaining?: string | null;
+    limit?: string | null;
+    reset?: string | null;
+  };
+  status:
+    | 'verified'
+    | 'missing_config'
+    | 'auth_failed'
+    | 'no_repo_provided'
+    | 'repo_not_found'
+    | 'forbidden'
+    | 'no_push_permission'
+    | 'branch_not_found'
+    | 'network_error'
+    | 'unknown';
+  message: string;
+  latencyMs?: number;
+  lastChecked?: string;
+}
+
+export interface ContentValidationIssue {
+  filePath: string;
+  field?: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+export interface ContentValidationResult {
+  valid: boolean;
+  issues: ContentValidationIssue[];
+  totalFilesChecked: number;
+}
+
+export interface PendingChangeItem {
+  path: string;
+  type: 'added' | 'modified' | 'deleted';
+  category: 'post' | 'page' | 'data' | 'media' | 'other';
+  title?: string;
+  sizeBytes?: number;
+  isValid: boolean;
+  validationError?: string;
+  computedSha?: string;
+  remoteSha?: string;
+}
+
+export interface PendingChangesSummary {
+  changes: PendingChangeItem[];
+  additionsCount: number;
+  modificationsCount: number;
+  deletionsCount: number;
+  totalChangedCount: number;
+  hasValidationErrors: boolean;
+  validationErrors: ContentValidationIssue[];
+  remoteHeadSha?: string;
+  branch: string;
+  repo: string;
+  lastScanned: string;
 }
 
 /**
@@ -294,24 +368,48 @@ export async function calculateGitBlobSha(content: string): Promise<string> {
 }
 
 function formatPostToMarkdown(post: Post): string {
+  const cleanTitle = (post.title || '').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').trim();
+  const cleanExcerpt = (post.excerpt || '')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+  const cleanMetaTitle = (post.seo?.metaTitle || post.title || '')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+  const cleanMetaDesc = (post.seo?.metaDescription || post.excerpt || '')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+  const cleanAuthor = (post.author || 'Amit Singh')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+  const cleanCategory = (post.category || 'General')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+
   return `---
-title: "${(post.title || '').replace(/"/g, '\\"')}"
+title: "${cleanTitle}"
 slug: "${post.slug}"
 pubDate: ${post.pubDate || new Date().toISOString()}
 status: "${post.status || 'published'}"
 draft: ${post.status === 'draft'}
-author: "${(post.author || 'Amit Singh').replace(/"/g, '\\"')}"
-category: "${(post.category || 'General').replace(/"/g, '\\"')}"
-tags: [${(post.tags || []).map((t) => `"${t}"`).join(', ')}]
+author: "${cleanAuthor}"
+category: "${cleanCategory}"
+tags: [${(post.tags || []).map((t) => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]
 featuredImage: "${post.featuredImage || ''}"
-excerpt: "${(post.excerpt || '').replace(/"/g, '\\"')}"
+excerpt: "${cleanExcerpt}"
 readingTime: ${post.readingTime || Math.max(1, Math.ceil((post.blocks || []).length * 0.8))}
 template: "${post.template || 'standard'}"
 blocks: ${JSON.stringify(post.blocks || [])}
 seo:
-  metaTitle: "${(post.seo?.metaTitle || post.title || '').replace(/"/g, '\\"')}"
-  metaDescription: "${(post.seo?.metaDescription || post.excerpt || '').replace(/"/g, '\\"')}"
-  focusKeyword: "${post.seo?.focusKeyword || ''}"
+  metaTitle: "${cleanMetaTitle}"
+  metaDescription: "${cleanMetaDesc}"
+  focusKeyword: "${(post.seo?.focusKeyword || '').replace(/"/g, '\\"')}"
   robotsIndex: ${post.seo?.robotsIndex !== false}
   robotsFollow: ${post.seo?.robotsFollow !== false}
 ---
@@ -320,16 +418,511 @@ ${post.body || ''}`;
 }
 
 function formatPageToMarkdown(page: Page): string {
+  const cleanTitle = (page.title || '').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').trim();
+  const cleanMetaTitle = (page.seo?.metaTitle || page.title || '')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+  const cleanMetaDesc = (page.seo?.metaDescription || '')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+
   return `---
-title: "${(page.title || '').replace(/"/g, '\\"')}"
+title: "${cleanTitle}"
 slug: "${page.slug}"
-pubDate: ${new Date().toISOString()}
+pubDate: ${(page as any).pubDate || new Date().toISOString()}
 template: "${page.template || 'default'}"
 draft: ${page.status === 'draft'}
 blocks: ${JSON.stringify(page.blocks || [])}
+seo:
+  metaTitle: "${cleanMetaTitle}"
+  metaDescription: "${cleanMetaDesc}"
+  focusKeyword: "${(page.seo?.focusKeyword || '').replace(/"/g, '\\"')}"
+  robotsIndex: ${page.seo?.robotsIndex !== false}
+  robotsFollow: ${page.seo?.robotsFollow !== false}
 ---
 
 ${page.body || ''}`;
+}
+
+export { formatPostToMarkdown, formatPageToMarkdown };
+
+/**
+ * Verifies the server-side edge environment without exposing secrets:
+ * - Checks if GITHUB_PAT secret is configured on the server
+ * - Validates admin session authentication
+ * - Tests upstream GitHub API connectivity and token validity
+ * - Validates repository access and push/write permissions
+ * - Verifies target branch existence
+ * - Retrieves rate-limit status
+ */
+export async function verifyEdgeEnvironment(params: {
+  owner: string;
+  repoName: string;
+  branch: string;
+  workerProxyUrl?: string;
+}): Promise<EdgeEnvironmentStatus> {
+  const start = Date.now();
+  const cleanOwner = (params.owner || '').trim();
+  const cleanRepo = (params.repoName || '').trim();
+  const cleanBranch = (params.branch || 'main').trim();
+
+  const sessionToken = getSessionToken();
+  const hasProxy =
+    params.workerProxyUrl &&
+    params.workerProxyUrl.trim() &&
+    !isAuthenticatorWorkerUrl(params.workerProxyUrl);
+  const targetUrl = hasProxy
+    ? `${params.workerProxyUrl!.trim()}/verify-env?owner=${encodeURIComponent(cleanOwner)}&repo=${encodeURIComponent(cleanRepo)}&branch=${encodeURIComponent(cleanBranch)}`
+    : `/api/github/verify-env?owner=${encodeURIComponent(cleanOwner)}&repo=${encodeURIComponent(cleanRepo)}&branch=${encodeURIComponent(cleanBranch)}`;
+
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github.v3+json',
+  };
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`;
+    headers['X-Auth-Token'] = sessionToken;
+  }
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+    });
+
+    const latencyMs = Date.now() - start;
+    const lastChecked = new Date().toLocaleTimeString();
+
+    if (res.status === 401) {
+      return {
+        configured: true,
+        authenticated: false,
+        status: 'auth_failed',
+        message: 'Admin session is invalid or expired. Please re-login to AstroPress CMS.',
+        latencyMs,
+        lastChecked,
+      };
+    }
+
+    const data = await res.json().catch(() => ({}));
+    return {
+      configured: Boolean(data.configured),
+      authenticated: Boolean(data.authenticated),
+      githubAuth: data.githubAuth,
+      githubUser: data.githubUser,
+      repo: data.repo || `${cleanOwner}/${cleanRepo}`,
+      branch: data.branch || cleanBranch,
+      repoExists: data.repoExists,
+      isPrivate: data.isPrivate,
+      defaultBranch: data.defaultBranch,
+      hasPushPermission: data.hasPushPermission,
+      branchExists: data.branchExists,
+      headSha: data.headSha,
+      rateLimit: data.rateLimit,
+      status: data.status || (res.ok ? 'verified' : 'unknown'),
+      message: data.message || `Server responded with status ${res.status}`,
+      latencyMs,
+      lastChecked,
+    };
+  } catch (err: any) {
+    return {
+      configured: false,
+      authenticated: false,
+      status: 'network_error',
+      message: `Failed to connect to verification endpoint: ${err.message || 'Network error'}`,
+      latencyMs: Date.now() - start,
+      lastChecked: new Date().toLocaleTimeString(),
+    };
+  }
+}
+
+/**
+ * Validates all changed Markdown content before pushing to protect production:
+ * - Rejects malformed frontmatter, missing required keys, invalid YAML, duplicate slugs
+ * - Ensures excerpts do not contain unescaped quotes or markdown image tags
+ */
+export function validateContentBeforePush(posts: Post[], pages: Page[]): ContentValidationResult {
+  const issues: ContentValidationIssue[] = [];
+  const seenPostSlugs = new Set<string>();
+  const seenPageSlugs = new Set<string>();
+
+  // Validate Posts
+  posts.forEach((post, idx) => {
+    const fileRef = `src/content/posts/${post.slug || `post-${idx}`}.md`;
+
+    if (!post.title || !post.title.trim()) {
+      issues.push({
+        filePath: fileRef,
+        field: 'title',
+        message: 'Post title cannot be empty.',
+        severity: 'error',
+      });
+    }
+
+    if (!post.slug || !post.slug.trim()) {
+      issues.push({
+        filePath: fileRef,
+        field: 'slug',
+        message: 'Post slug cannot be empty.',
+        severity: 'error',
+      });
+    } else {
+      const normalizedSlug = post.slug.toLowerCase().trim();
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalizedSlug)) {
+        issues.push({
+          filePath: fileRef,
+          field: 'slug',
+          message: `Slug "${post.slug}" must be lowercase alphanumeric with hyphens (e.g. my-post-title).`,
+          severity: 'error',
+        });
+      }
+      if (seenPostSlugs.has(normalizedSlug)) {
+        issues.push({
+          filePath: fileRef,
+          field: 'slug',
+          message: `Duplicate post slug detected: "${normalizedSlug}". Each article must have a unique slug.`,
+          severity: 'error',
+        });
+      }
+      seenPostSlugs.add(normalizedSlug);
+    }
+
+    // Test frontmatter generation and YAML parseability
+    const md = formatPostToMarkdown(post);
+    const fmMatch = md.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) {
+      issues.push({
+        filePath: fileRef,
+        field: 'frontmatter',
+        message: 'Frontmatter delimiters (---) are missing or corrupted.',
+        severity: 'error',
+      });
+    } else {
+      try {
+        const parsed = yaml.load(fmMatch[1]);
+        if (!parsed || typeof parsed !== 'object') {
+          issues.push({
+            filePath: fileRef,
+            field: 'frontmatter',
+            message: 'YAML frontmatter did not parse into a valid object.',
+            severity: 'error',
+          });
+        }
+      } catch (yamlErr: any) {
+        issues.push({
+          filePath: fileRef,
+          field: 'yaml',
+          message: `YAML syntax error in frontmatter: ${yamlErr.message || 'Invalid YAML'}`,
+          severity: 'error',
+        });
+      }
+    }
+  });
+
+  // Validate Pages
+  pages.forEach((page, idx) => {
+    const fileRef = `src/content/pages/${page.slug || `page-${idx}`}.md`;
+
+    if (!page.title || !page.title.trim()) {
+      issues.push({
+        filePath: fileRef,
+        field: 'title',
+        message: 'Page title cannot be empty.',
+        severity: 'error',
+      });
+    }
+
+    if (!page.slug || !page.slug.trim()) {
+      issues.push({
+        filePath: fileRef,
+        field: 'slug',
+        message: 'Page slug cannot be empty.',
+        severity: 'error',
+      });
+    } else {
+      const normalizedSlug = page.slug.toLowerCase().trim();
+      if (seenPageSlugs.has(normalizedSlug)) {
+        issues.push({
+          filePath: fileRef,
+          field: 'slug',
+          message: `Duplicate page slug detected: "${normalizedSlug}".`,
+          severity: 'error',
+        });
+      }
+      seenPageSlugs.add(normalizedSlug);
+    }
+
+    const md = formatPageToMarkdown(page);
+    const fmMatch = md.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) {
+      issues.push({
+        filePath: fileRef,
+        field: 'frontmatter',
+        message: 'Frontmatter delimiters missing in page.',
+        severity: 'error',
+      });
+    } else {
+      try {
+        const parsed = yaml.load(fmMatch[1]);
+        if (!parsed || typeof parsed !== 'object') {
+          issues.push({
+            filePath: fileRef,
+            field: 'frontmatter',
+            message: 'YAML frontmatter did not parse into a valid object.',
+            severity: 'error',
+          });
+        }
+      } catch (yamlErr: any) {
+        issues.push({
+          filePath: fileRef,
+          field: 'yaml',
+          message: `YAML syntax error in page frontmatter: ${yamlErr.message || 'Invalid YAML'}`,
+          severity: 'error',
+        });
+      }
+    }
+  });
+
+  return {
+    valid: issues.filter((i) => i.severity === 'error').length === 0,
+    issues,
+    totalFilesChecked: posts.length + pages.length,
+  };
+}
+
+/**
+ * Accurately reads all actual candidate content files and diffs them against
+ * the remote Git tree to identify pending additions, modifications, and deletions.
+ */
+export async function detectPendingChanges(params: {
+  posts: Post[];
+  pages: Page[];
+  deploymentSettings: DeploymentSettings;
+  heroConfig?: HeroSectionConfig;
+  themeSettings?: ThemeSettings;
+  siteSettings?: SiteSettings;
+  categories?: Category[];
+  tags?: Tag[];
+  authors?: Author[];
+  media?: MediaItem[];
+  menus?: Menu[];
+}): Promise<PendingChangesSummary> {
+  const { deploymentSettings } = params;
+  const branch = deploymentSettings.githubBranch || 'main';
+  const repoString = deploymentSettings.githubRepo || '';
+  const [owner, repoName] = repoString.split('/');
+
+  // 1. Build local candidate map
+  const activePosts = [...(params.posts || [])];
+  const activePages = [...(params.pages || [])];
+  const candidateFiles: Record<string, string> = { ...projectFilesManifest };
+
+  activePosts.forEach((post) => {
+    candidateFiles[`src/content/posts/${post.slug}.md`] = formatPostToMarkdown(post);
+  });
+  activePages.forEach((page) => {
+    candidateFiles[`src/content/pages/${page.slug}.md`] = formatPageToMarkdown(page);
+  });
+
+  // Also read from /api/content/all if available (disk edits)
+  try {
+    if (typeof window !== 'undefined') {
+      const diskRes = await fetch('/api/content/all');
+      if (diskRes.ok) {
+        const diskData = await diskRes.json();
+        if (diskData.success) {
+          (diskData.posts || []).forEach((p: any) => {
+            if (p.slug && p.content && activePosts.some((ap) => ap.slug === p.slug)) {
+              candidateFiles[`src/content/posts/${p.slug}.md`] = p.content;
+            }
+          });
+          (diskData.pages || []).forEach((p: any) => {
+            if (p.slug && p.content && activePages.some((ap) => ap.slug === p.slug)) {
+              candidateFiles[`src/content/pages/${p.slug}.md`] = p.content;
+            }
+          });
+        }
+      }
+    }
+  } catch {}
+
+  if (params.heroConfig) candidateFiles['src/data/heroConfig.json'] = JSON.stringify(params.heroConfig, null, 2);
+  if (params.themeSettings) candidateFiles['src/data/themeSettings.json'] = JSON.stringify(params.themeSettings, null, 2);
+  if (params.siteSettings) candidateFiles['src/data/siteSettings.json'] = JSON.stringify(params.siteSettings, null, 2);
+  if (params.categories || params.tags) {
+    candidateFiles['src/data/categories.json'] = JSON.stringify(
+      { categories: params.categories || [], tags: params.tags || [] },
+      null,
+      2
+    );
+  }
+  if (params.authors) candidateFiles['src/data/authors.json'] = JSON.stringify(params.authors, null, 2);
+  if (params.media) candidateFiles['src/data/media.json'] = JSON.stringify(params.media, null, 2);
+  if (params.menus) candidateFiles['src/data/menus.json'] = JSON.stringify(params.menus, null, 2);
+
+  // Run validation on content
+  const validationResult = validateContentBeforePush(activePosts, activePages);
+
+  // 2. Fetch remote tree if owner and repo configured
+  const remoteTreeMap = new Map<string, { sha: string; mode: string; type: string }>();
+  let remoteHeadSha: string | undefined;
+
+  if (owner && repoName) {
+    const useProxy =
+      deploymentSettings.cloudflareWorkerUrl?.trim() &&
+      !isAuthenticatorWorkerUrl(deploymentSettings.cloudflareWorkerUrl);
+    const baseApiUrl = useProxy
+      ? `${deploymentSettings.cloudflareWorkerUrl!.trim()}/repos/${owner}/${repoName}`
+      : `/api/github/repos/${owner}/${repoName}`;
+
+    const sessionToken = getSessionToken();
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+    };
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+      headers['X-Auth-Token'] = sessionToken;
+    }
+
+    try {
+      const refRes = await fetch(`${baseApiUrl}/git/ref/heads/${branch}`, { method: 'GET', headers });
+      if (refRes.ok) {
+        const refData = await refRes.json();
+        remoteHeadSha = refData.object?.sha;
+        if (remoteHeadSha) {
+          const treeRes = await fetch(`${baseApiUrl}/git/trees/${remoteHeadSha}?recursive=1`, { headers });
+          if (treeRes.ok) {
+            const treeData = await treeRes.json();
+            (treeData.tree || []).forEach((item: any) => {
+              if (item.path && item.sha) {
+                remoteTreeMap.set(item.path, { sha: item.sha, mode: item.mode || '100644', type: item.type || 'blob' });
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[detectPendingChanges] Could not fetch remote tree:', e);
+    }
+  }
+
+  // 3. Diff candidate files against remote tree
+  const changes: PendingChangeItem[] = [];
+  const candidatePaths = Object.keys(candidateFiles);
+
+  for (const filePath of candidatePaths) {
+    const rawContent = candidateFiles[filePath];
+    const isBinary =
+      (typeof rawContent === 'string' && rawContent.startsWith('data:') && rawContent.includes(';base64,')) ||
+      /\.(webp|png|jpg|jpeg|gif|ico|pdf|woff|woff2|ttf|eot|mp4|webm)$/i.test(filePath);
+
+    const getCategory = (p: string): PendingChangeItem['category'] => {
+      if (p.startsWith('src/content/posts/')) return 'post';
+      if (p.startsWith('src/content/pages/')) return 'page';
+      if (p.startsWith('src/data/')) return 'data';
+      if (p.startsWith('public/uploads/')) return 'media';
+      return 'other';
+    };
+
+    const category = getCategory(filePath);
+    const sizeBytes = typeof rawContent === 'string' ? new TextEncoder().encode(rawContent).length : 0;
+
+    let computedSha = '';
+    if (!isBinary && typeof rawContent === 'string') {
+      computedSha = await calculateGitBlobSha(rawContent);
+    }
+
+    const remoteEntry = remoteTreeMap.get(filePath);
+
+    if (remoteTreeMap.size === 0) {
+      if (category === 'post' || category === 'page' || category === 'data') {
+        const fileIssues = validationResult.issues.filter((i) => i.filePath === filePath);
+        changes.push({
+          path: filePath,
+          type: 'modified',
+          category,
+          sizeBytes,
+          isValid: fileIssues.length === 0,
+          validationError: fileIssues.map((i) => i.message).join('; '),
+          computedSha,
+        });
+      }
+      continue;
+    }
+
+    if (!remoteEntry) {
+      const fileIssues = validationResult.issues.filter((i) => i.filePath === filePath);
+      changes.push({
+        path: filePath,
+        type: 'added',
+        category,
+        sizeBytes,
+        isValid: fileIssues.length === 0,
+        validationError: fileIssues.map((i) => i.message).join('; '),
+        computedSha,
+      });
+    } else if (computedSha && remoteEntry.sha !== computedSha) {
+      const fileIssues = validationResult.issues.filter((i) => i.filePath === filePath);
+      changes.push({
+        path: filePath,
+        type: 'modified',
+        category,
+        sizeBytes,
+        isValid: fileIssues.length === 0,
+        validationError: fileIssues.map((i) => i.message).join('; '),
+        computedSha,
+        remoteSha: remoteEntry.sha,
+      });
+    }
+  }
+
+  // Detect Deletions from remote tree
+  remoteTreeMap.forEach((remoteEntry, remotePath) => {
+    if (remotePath.startsWith('src/content/posts/') && remotePath.endsWith('.md')) {
+      const slug = remotePath.replace('src/content/posts/', '').replace(/\.md$/, '');
+      if (!activePosts.some((p) => p.slug === slug)) {
+        changes.push({
+          path: remotePath,
+          type: 'deleted',
+          category: 'post',
+          isValid: true,
+          remoteSha: remoteEntry.sha,
+        });
+      }
+    } else if (remotePath.startsWith('src/content/pages/') && remotePath.endsWith('.md')) {
+      const slug = remotePath.replace('src/content/pages/', '').replace(/\.md$/, '');
+      if (!activePages.some((p) => p.slug === slug)) {
+        changes.push({
+          path: remotePath,
+          type: 'deleted',
+          category: 'page',
+          isValid: true,
+          remoteSha: remoteEntry.sha,
+        });
+      }
+    }
+  });
+
+  const additionsCount = changes.filter((c) => c.type === 'added').length;
+  const modificationsCount = changes.filter((c) => c.type === 'modified').length;
+  const deletionsCount = changes.filter((c) => c.type === 'deleted').length;
+
+  return {
+    changes,
+    additionsCount,
+    modificationsCount,
+    deletionsCount,
+    totalChangedCount: changes.length,
+    hasValidationErrors: !validationResult.valid,
+    validationErrors: validationResult.issues,
+    remoteHeadSha,
+    branch,
+    repo: repoString,
+    lastScanned: new Date().toLocaleTimeString(),
+  };
 }
 
 // In-flight deployment lock to prevent concurrent or duplicate pushes
@@ -633,6 +1226,21 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
     }
   } catch (syncErr) {
     console.warn('[Deploy] Remote CMS pre-deploy sync warning:', syncErr);
+  }
+
+  // 4b. Pre-push Content Validation Gate
+  const validation = validateContentBeforePush(activePosts, activePages);
+  if (!validation.valid) {
+    if (onProgress) {
+      onProgress({ current: 0, total: 100, filePath: 'Content validation failed!', status: 'error' });
+    }
+    return {
+      success: false,
+      totalPushed: 0,
+      totalFiles: 0,
+      failedFiles: validation.issues.map((i) => ({ path: i.filePath, error: i.message })),
+      message: `Content validation failed before pushing. ${validation.issues.length} issue(s) found in frontmatter/schemas. Please resolve them to protect production.`,
+    };
   }
 
   // 5. Build candidate files map with complete accumulated state
@@ -1062,6 +1670,7 @@ async function performAtomicBulkDeploy(payload: FullPushPayload) {
     failedFiles: [],
     commitSha: newCommitSha,
     commitUrl,
+    targetBranch: branch,
     message: `Successfully published all ${modifiedTreeItems.length} accumulated changes to GitHub in 1 atomic commit (${shortSha}) and 1 push! Exactly 1 Cloudflare Pages build triggered.`,
     diagnostics,
   };
@@ -1078,9 +1687,12 @@ export async function executeFullRepositoryPush(payload: FullPushPayload): Promi
   failedFiles: { path: string; error: string }[];
   commitSha?: string;
   commitUrl?: string;
+  targetBranch?: string;
   verifiedRootFiles?: string[];
   message: string;
   noChanges?: boolean;
+  validationErrors?: ContentValidationIssue[];
+  diagnostics?: any;
 }> {
   return executeAtomicBulkDeploy(payload);
 }

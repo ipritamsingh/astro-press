@@ -856,13 +856,13 @@ export const GutenbergEditor: React.FC<Props> = ({
           category: category || 'Technology',
           tags: selectedTags || [],
           featuredImage: featuredImage || '',
-          excerpt: excerpt || title.trim(),
+          excerpt: (excerpt || title.trim()).replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim(),
           readingTime: Math.max(1, Math.ceil(blocks.length * 0.8)),
           template: template || 'standard',
           blocks: blocks || [],
           seo: {
             metaTitle: seo.metaTitle || title.trim(),
-            metaDescription: seo.metaDescription || '',
+            metaDescription: (seo.metaDescription || '').replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim(),
             focusKeyword: seo.focusKeyword || '',
             robotsIndex: seo.robotsIndex ?? true,
             robotsFollow: seo.robotsFollow ?? true,
@@ -873,7 +873,8 @@ export const GutenbergEditor: React.FC<Props> = ({
       lineWidth: -1,
       noRefs: true,
       sortKeys: false,
-    });
+      quotingType: '"',
+    } as any);
 
     return `---\n${yamlStr}---\n\n${compileBlocksToMarkdown()}`;
   };

@@ -180,16 +180,207 @@ export async function handleLocalApiRequest(req: any, res: any) {
         return;
       }
 
+      const parsedUrl = new URL(url, 'http://localhost:3000');
+      const githubPath = parsedUrl.pathname.replace(/^\/api\/github/, '');
       const pat = process.env.GITHUB_PAT;
+
+      // Special Environment Verification Endpoint: /api/github/verify-env
+      if (githubPath === '/verify-env' || githubPath === '/verify-env/') {
+        const owner = (parsedUrl.searchParams.get('owner') || '').trim();
+        const repo = (parsedUrl.searchParams.get('repo') || '').trim();
+        const branch = (parsedUrl.searchParams.get('branch') || 'main').trim();
+
+        if (!pat) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(
+            JSON.stringify({
+              configured: false,
+              authenticated: true,
+              repo: `${owner}/${repo}`,
+              branch,
+              status: 'missing_config',
+              message: 'GitHub PAT secret (GITHUB_PAT) is not configured in server environment (.env).',
+            })
+          );
+          return;
+        }
+
+        try {
+          const userRes = await fetch('https://api.github.com/user', {
+            headers: {
+              Authorization: `Bearer ${pat}`,
+              Accept: 'application/vnd.github.v3+json',
+              'User-Agent': 'AstroPress-CMS-Server',
+            },
+          });
+
+          const rateLimit = {
+            remaining: userRes.headers.get('x-ratelimit-remaining'),
+            limit: userRes.headers.get('x-ratelimit-limit'),
+            reset: userRes.headers.get('x-ratelimit-reset'),
+          };
+
+          if (userRes.status === 401) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+              JSON.stringify({
+                configured: true,
+                authenticated: true,
+                githubAuth: false,
+                repo: `${owner}/${repo}`,
+                branch,
+                status: 'auth_failed',
+                message: 'GITHUB_PAT secret is set, but GitHub returned 401 Unauthorized (token is invalid or expired).',
+                rateLimit,
+              })
+            );
+            return;
+          }
+
+          const userData = await userRes.json().catch(() => ({}));
+          const githubLogin = userData.login || 'authenticated';
+
+          if (!owner || !repo) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+              JSON.stringify({
+                configured: true,
+                authenticated: true,
+                githubAuth: true,
+                githubUser: githubLogin,
+                status: 'no_repo_provided',
+                message: `GitHub token verified for user "${githubLogin}". Provide repository owner and name to verify permissions.`,
+                rateLimit,
+              })
+            );
+            return;
+          }
+
+          const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+            headers: {
+              Authorization: `Bearer ${pat}`,
+              Accept: 'application/vnd.github.v3+json',
+              'User-Agent': 'AstroPress-CMS-Server',
+            },
+          });
+
+          if (repoRes.status === 404) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+              JSON.stringify({
+                configured: true,
+                authenticated: true,
+                githubAuth: true,
+                githubUser: githubLogin,
+                repo: `${owner}/${repo}`,
+                branch,
+                repoExists: false,
+                status: 'repo_not_found',
+                message: `Repository "${owner}/${repo}" was not found (404 Not Found). Verify spelling or grant repository access to the token.`,
+                rateLimit,
+              })
+            );
+            return;
+          }
+
+          if (repoRes.status === 403) {
+            const errBody = await repoRes.json().catch(() => ({}));
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+              JSON.stringify({
+                configured: true,
+                authenticated: true,
+                githubAuth: true,
+                githubUser: githubLogin,
+                repo: `${owner}/${repo}`,
+                branch,
+                status: 'forbidden',
+                message: `Access to "${owner}/${repo}" forbidden (403): ${errBody.message || 'Rate limit or missing token repository permission'}.`,
+                rateLimit,
+              })
+            );
+            return;
+          }
+
+          const repoData = await repoRes.json().catch(() => ({}));
+          const permissions = repoData.permissions || { push: true, pull: true, admin: false };
+          const hasPush = Boolean(permissions.push);
+
+          const branchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`, {
+            headers: {
+              Authorization: `Bearer ${pat}`,
+              Accept: 'application/vnd.github.v3+json',
+              'User-Agent': 'AstroPress-CMS-Server',
+            },
+          });
+
+          let branchExists = false;
+          let headSha: string | null = null;
+          if (branchRes.ok) {
+            branchExists = true;
+            const branchData = await branchRes.json().catch(() => ({}));
+            headSha = branchData.object?.sha || null;
+          }
+
+          let status = 'verified';
+          let message = `Edge environment, GitHub token, and repository "${owner}/${repo}" (${branch}) verified successfully with push permissions.`;
+
+          if (!hasPush) {
+            status = 'no_push_permission';
+            message = `Connected to repository "${owner}/${repo}", but token lacks push/write permissions. Fine-grained PAT needs "Contents: Read and write" access.`;
+          } else if (!branchExists) {
+            status = 'branch_not_found';
+            message = `Connected to "${owner}/${repo}", but target branch "${branch}" was not found. Default branch is "${repoData.default_branch || 'main'}".`;
+          }
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(
+            JSON.stringify({
+              configured: true,
+              authenticated: true,
+              githubAuth: true,
+              githubUser: githubLogin,
+              repo: repoData.full_name || `${owner}/${repo}`,
+              branch,
+              repoExists: true,
+              isPrivate: Boolean(repoData.private),
+              defaultBranch: repoData.default_branch || 'main',
+              hasPushPermission: hasPush,
+              branchExists,
+              headSha: headSha ? headSha.substring(0, 7) : null,
+              rateLimit,
+              status,
+              message,
+            })
+          );
+          return;
+        } catch (err: any) {
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(
+            JSON.stringify({
+              configured: true,
+              authenticated: true,
+              status: 'network_error',
+              message: `Network error connecting to GitHub: ${err.message || 'Connection failure'}`,
+            })
+          );
+          return;
+        }
+      }
+
       if (!pat) {
         res.statusCode = 503;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ error: 'GitHub PAT secret (GITHUB_PAT) is not configured on the server.' }));
         return;
       }
-
-      const parsedUrl = new URL(url, 'http://localhost:3000');
-      const githubPath = parsedUrl.pathname.replace(/^\/api\/github/, '');
 
       const ALLOWED_METHODS = ['GET', 'POST', 'PATCH'];
       if (!ALLOWED_METHODS.includes(req.method)) {

@@ -11,7 +11,8 @@
     "check": "npx astro check",
     "clean": "node scripts/clean-dist.cjs",
     "lint": "tsc --noEmit",
-    "prelint": "node scripts/generate-manifest.cjs"
+    "prelint": "node scripts/generate-manifest.cjs",
+    "test:git": "node scripts/test-git-deployment.cjs"
   },
   "engines": {
     "node": ">=22.22.0",
