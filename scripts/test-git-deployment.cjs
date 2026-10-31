@@ -868,6 +868,153 @@ check(
 );
 
 // ---------------------------------------------------------------------------
+// 10. Explore by Topic Category Showcase & SVG Sanitization
+// ---------------------------------------------------------------------------
+console.log('\n--- Test Suite 10: Explore by Topic Category Showcase & SVG Sanitizer ---');
+
+// 1. SVG Sanitizer tests
+const FORBIDDEN_TAGS = ['script', 'foreignobject', 'iframe', 'object', 'embed', 'applet', 'meta', 'link', 'style', 'base', 'form', 'input', 'button', 'audio', 'video'];
+const DANGEROUS_PROTOCOLS = ['javascript:', 'vbscript:', 'data:text/html'];
+
+function testSanitizeSvg(rawSvg) {
+  if (!rawSvg || typeof rawSvg !== 'string') return { valid: false, sanitized: '', error: 'SVG content cannot be empty' };
+  const trimmed = rawSvg.trim();
+  if (!trimmed.toLowerCase().includes('<svg') || !trimmed.toLowerCase().includes('</svg>')) {
+    return { valid: false, sanitized: '', error: 'Input must contain a valid <svg>...</svg> element' };
+  }
+  const lower = trimmed.toLowerCase();
+  for (const tag of FORBIDDEN_TAGS) {
+    const openingTagRegex = new RegExp(`<\\s*${tag}[\\s>/]`, 'i');
+    if (openingTagRegex.test(lower)) {
+      return { valid: false, sanitized: '', error: `Dangerous element <${tag}> is not allowed` };
+    }
+  }
+  let cleaned = trimmed;
+  cleaned = cleaned.replace(/<\?xml[\s\S]*?\?>/gi, '');
+  cleaned = cleaned.replace(/<!DOCTYPE[\s\S]*?>/gi, '');
+  cleaned = cleaned.replace(/\s+on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+  cleaned = cleaned.replace(/\s+(?:xlink:)?href\s*=\s*["']?\s*(?:javascript:|vbscript:|data:text\/html)[^"'>\s]*["']?/gi, '');
+  const svgStart = cleaned.search(/<svg[\s>]/i);
+  const svgEnd = cleaned.toLowerCase().lastIndexOf('</svg>');
+  if (svgStart === -1 || svgEnd === -1) return { valid: false, sanitized: '', error: 'Valid SVG root tag not found' };
+  return { valid: true, sanitized: cleaned.substring(svgStart, svgEnd + 6).trim() };
+}
+
+// 1a. Rejects <script> tags
+const scriptSvg = '<svg viewBox="0 0 24 24"><script>alert("xss")</script><path d="M0 0h24v24H0z"/></svg>';
+const scriptResult = testSanitizeSvg(scriptSvg);
+check(
+  'SVG Sanitizer blocks malicious <script> tags',
+  !scriptResult.valid && scriptResult.error.includes('<script>')
+);
+
+// 1b. Strips inline event handlers (onload, onerror)
+const onloadSvg = '<svg viewBox="0 0 24 24" onload="alert(1)"><circle cx="12" cy="12" r="10" onerror="alert(2)"/></svg>';
+const onloadResult = testSanitizeSvg(onloadSvg);
+check(
+  'SVG Sanitizer strips inline on* event handler attributes',
+  onloadResult.valid && !onloadResult.sanitized.includes('onload') && !onloadResult.sanitized.includes('onerror')
+);
+
+// 1c. Rejects <foreignObject>
+const foreignSvg = '<svg viewBox="0 0 100 100"><foreignObject width="100" height="100"><body xmlns="http://www.w3.org/1999/xhtml"><h1>PWNED</h1></body></foreignObject></svg>';
+const foreignResult = testSanitizeSvg(foreignSvg);
+check(
+  'SVG Sanitizer blocks <foreignObject> injections',
+  !foreignResult.valid && foreignResult.error.includes('<foreignobject>')
+);
+
+// 1d. Strips javascript: URLs in href/xlink:href
+const hrefSvg = '<svg viewBox="0 0 24 24"><a href="javascript:alert(1)"><path d="M0 0h24v24H0z"/></a></svg>';
+const hrefResult = testSanitizeSvg(hrefSvg);
+check(
+  'SVG Sanitizer strips javascript: pseudo-protocol URLs',
+  hrefResult.valid && !hrefResult.sanitized.includes('javascript:')
+);
+
+// 1e. Accepts clean, valid standard SVGs
+const cleanSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>';
+const cleanResult = testSanitizeSvg(cleanSvg);
+check(
+  'SVG Sanitizer successfully validates clean standard SVG markup',
+  cleanResult.valid && cleanResult.sanitized.includes('<path')
+);
+
+// 2. Homepage Category Showcase filtering & ordering
+const testCategories = [
+  { id: 'cat-1', name: 'Technology', slug: 'technology', color: '#2563eb', icon: 'Cpu', iconType: 'library', showOnHomepage: true, order: 3 },
+  { id: 'cat-2', name: 'Astro & Islands', slug: 'astro-islands', color: '#7c3aed', icon: 'Sparkles', iconType: 'library', showOnHomepage: true, order: 1 },
+  { id: 'cat-3', name: 'Internal Drafts', slug: 'internal-drafts', color: '#6b7280', icon: 'FolderTree', iconType: 'library', showOnHomepage: false, order: 2 },
+  { id: 'cat-4', name: 'Cloud Edge', slug: 'cloud-edge', color: '#ea580c', icon: 'Cloud', iconType: 'library', showOnHomepage: true, order: 4 },
+];
+
+const filteredShowcase = testCategories
+  .filter((c) => c.showOnHomepage !== false)
+  .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+check(
+  'Homepage Showcase excludes categories with showOnHomepage === false',
+  !filteredShowcase.some((c) => c.slug === 'internal-drafts') && filteredShowcase.length === 3
+);
+
+check(
+  'Homepage Showcase strictly orders categories by configured display order',
+  filteredShowcase[0].slug === 'astro-islands' &&
+  filteredShowcase[1].slug === 'technology' &&
+  filteredShowcase[2].slug === 'cloud-edge'
+);
+
+// 3. Dynamic Category Article Count Calculation
+const testArticles = [
+  { slug: 'post-1', title: 'Post 1', category: 'Technology', status: 'published' },
+  { slug: 'post-2', title: 'Post 2', category: 'technology', status: 'published' },
+  { slug: 'post-3', title: 'Post 3', category: 'astro-islands', status: 'published' },
+  { slug: 'post-4', title: 'Post 4', category: 'Technology', status: 'draft' }, // draft excluded
+  { slug: 'post-5', title: 'Post 5', category: 'Technology', status: 'trash' }, // trash excluded
+];
+
+const publishedOnly = testArticles.filter((p) => p.status === 'published');
+const techCat = testCategories.find((c) => c.slug === 'technology');
+const techCount = publishedOnly.filter((p) => {
+  const pCat = (p.category || '').trim().toLowerCase();
+  return pCat === techCat.name.toLowerCase() || pCat === techCat.slug.toLowerCase() || pCat === techCat.id;
+}).length;
+
+check(
+  'Category article count correctly tallies published articles and excludes drafts/trash',
+  techCount === 2
+);
+
+// 4. Persistence & Serialization of categories.json
+const fs = require('fs');
+const path = require('path');
+const categoriesJsonPath = path.resolve(__dirname, '../src/data/categories.json');
+let categoriesJsonContent = null;
+try {
+  categoriesJsonContent = JSON.parse(fs.readFileSync(categoriesJsonPath, 'utf8'));
+} catch (e) {
+  categoriesJsonContent = null;
+}
+
+check(
+  'src/data/categories.json contains valid JSON with categories array',
+  categoriesJsonContent && Array.isArray(categoriesJsonContent.categories)
+);
+
+const sampleCategory = categoriesJsonContent ? categoriesJsonContent.categories[0] : null;
+check(
+  'categories.json categories contain name, slug, color, icon, iconType, showOnHomepage, and order',
+  sampleCategory &&
+  typeof sampleCategory.name === 'string' &&
+  typeof sampleCategory.slug === 'string' &&
+  typeof sampleCategory.color === 'string' &&
+  typeof sampleCategory.icon === 'string' &&
+  typeof sampleCategory.iconType === 'string' &&
+  typeof sampleCategory.showOnHomepage === 'boolean' &&
+  typeof sampleCategory.order === 'number'
+);
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n===============================================================');

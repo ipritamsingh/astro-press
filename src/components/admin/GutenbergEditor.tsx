@@ -1848,20 +1848,20 @@ export const GutenbergEditor: React.FC<Props> = ({
               <span className="hidden sm:inline">Add Block</span>
             </button>
 
-            {/* Inserter Dropdown Panel */}
+            {/* Inserter Centered Modal Overlay */}
             {showInserter && (
-              <>
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
                 <div
-                  className="fixed inset-0 z-40 bg-slate-900/10 backdrop-blur-[1px]"
+                  className="absolute inset-0"
                   onClick={() => {
                     setShowInserter(false);
                     setInsertionIndex(null);
                   }}
                 />
-                <div className="fixed sm:absolute top-16 sm:top-12 left-4 sm:left-0 w-[calc(100vw-32px)] sm:w-80 max-w-sm bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-                    <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <Plus className="h-3.5 w-3.5 text-blue-600" />
+                <div className="relative bg-white rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 p-6 z-10 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3 shrink-0">
+                    <span className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                      <Plus className="h-4 w-4 text-blue-600" />
                       <span>
                         {insertionIndex !== null
                           ? `Insert Block (Position ${insertionIndex + 1})`
@@ -1874,125 +1874,125 @@ export const GutenbergEditor: React.FC<Props> = ({
                         setShowInserter(false);
                         setInsertionIndex(null);
                       }}
-                      className="text-slate-400 hover:text-slate-700 font-bold text-lg p-0.5 leading-none"
+                      className="text-slate-400 hover:text-slate-700 font-bold text-xl p-1 leading-none"
                     >
                       ×
                     </button>
                   </div>
 
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-                  <div>
-                    <span className="text-[11px] font-semibold text-slate-400 block mb-1.5">Text & Content</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => addBlock('heading')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <Heading className="h-4 w-4 text-blue-600 shrink-0" />
-                        <span>Heading</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('paragraph')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <Type className="h-4 w-4 text-blue-600 shrink-0" />
-                        <span>Paragraph</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('quote')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <QuoteIcon className="h-4 w-4 text-blue-600 shrink-0" />
-                        <span>Quote</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('code')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <CodeIcon className="h-4 w-4 text-blue-600 shrink-0" />
-                        <span>Code Snippet</span>
-                      </button>
+                  <div className="space-y-4 flex-1 overflow-y-auto pr-1">
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">Text & Content</span>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                          onClick={() => addBlock('heading')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <Heading className="h-4 w-4 text-blue-600 shrink-0" />
+                          <span>Heading</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('paragraph')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <Type className="h-4 w-4 text-blue-600 shrink-0" />
+                          <span>Paragraph</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('quote')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <QuoteIcon className="h-4 w-4 text-blue-600 shrink-0" />
+                          <span>Quote</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('code')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <CodeIcon className="h-4 w-4 text-blue-600 shrink-0" />
+                          <span>Code Snippet</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <span className="text-[11px] font-semibold text-slate-400 block mb-1.5">Media & Layout</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => addBlock('image')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <ImageIcon className="h-4 w-4 text-amber-600 shrink-0" />
-                        <span>Image Banner</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('columns')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <ColumnsIcon className="h-4 w-4 text-emerald-600 shrink-0" />
-                        <span>2-3 Columns</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('table')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <TableIcon className="h-4 w-4 text-emerald-600 shrink-0" />
-                        <span>Table</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('download-button')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <DownloadIcon className="h-4 w-4 text-sky-600 shrink-0" />
-                        <span>Download Button</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('divider')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <Minus className="h-4 w-4 text-slate-600 shrink-0" />
-                        <span>Divider</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('alert')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <AlertCircle className="h-4 w-4 text-indigo-600 shrink-0" />
-                        <span>Notice Alert</span>
-                      </button>
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">Media & Layout</span>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                          onClick={() => addBlock('image')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <ImageIcon className="h-4 w-4 text-amber-600 shrink-0" />
+                          <span>Image Banner</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('columns')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <ColumnsIcon className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span>2-3 Columns</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('table')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <TableIcon className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span>Table</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('download-button')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <DownloadIcon className="h-4 w-4 text-sky-600 shrink-0" />
+                          <span>Download Button</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('divider')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <Minus className="h-4 w-4 text-slate-600 shrink-0" />
+                          <span>Divider</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('alert')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <AlertCircle className="h-4 w-4 text-indigo-600 shrink-0" />
+                          <span>Notice Alert</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <span className="text-[11px] font-semibold text-slate-400 block mb-1.5">Interactive & SEO FAQ</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => addBlock('accordion')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 text-xs font-bold text-left transition-colors col-span-2"
-                      >
-                        <HelpCircle className="h-4 w-4 text-purple-600 shrink-0" />
-                        <span>FAQ / Accordion Block (Schema JSON-LD)</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('button')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <ButtonIcon className="h-4 w-4 text-rose-600 shrink-0" />
-                        <span>Button CTA</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('author-box')}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-medium text-left transition-colors"
-                      >
-                        <User className="h-4 w-4 text-teal-600 shrink-0" />
-                        <span>Author Box</span>
-                      </button>
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">Interactive & SEO FAQ</span>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                          onClick={() => addBlock('accordion')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 text-xs font-bold text-left transition-colors col-span-2"
+                        >
+                          <HelpCircle className="h-4 w-4 text-purple-600 shrink-0" />
+                          <span>FAQ / Accordion Block (Schema JSON-LD)</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('button')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <ButtonIcon className="h-4 w-4 text-rose-600 shrink-0" />
+                          <span>Button CTA</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('author-box')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-700 text-xs font-semibold text-left transition-colors"
+                        >
+                          <User className="h-4 w-4 text-teal-600 shrink-0" />
+                          <span>Author Box</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </>
-          )}
+            )}
           </div>
 
           <button

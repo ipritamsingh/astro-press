@@ -226,7 +226,7 @@ export const AdSlotRenderer: React.FC<Props> = ({
                   order: 1,
                   targeting: { showOnHomepage: true, showOnPosts: true, showOnPages: true, showOnCategories: true, showOnAuthors: true },
                 }}
-                showSlotInfoBadge={true}
+                showSlotInfoBadge={false}
                 previewInteractive={true}
               />
             </div>
@@ -240,10 +240,10 @@ export const AdSlotRenderer: React.FC<Props> = ({
           return (
             <div key={ad.id} className={`w-full ${visClass} bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-2xs`}>
               <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 tracking-wider">
-                {ad.name} • Sponsored
+                Sponsored
               </div>
               <a href={safeDestUrl} target="_blank" rel="noopener noreferrer nofollow" className="block w-full rounded-xl overflow-hidden">
-                <img src={safeImgUrl} alt={ad.customImage.altText || ad.name} className="w-full max-h-56 object-cover rounded-xl" loading="lazy" />
+                <img src={safeImgUrl} alt={ad.customImage.altText || 'Sponsored Advertisement'} className="w-full max-h-56 object-cover rounded-xl" loading="lazy" />
               </a>
             </div>
           );
@@ -253,7 +253,7 @@ export const AdSlotRenderer: React.FC<Props> = ({
           const safeThirdPartyHtml = sanitizeAdCode(ad.adCode, 'third_party');
           return (
             <div key={ad.id} className={`w-full ${visClass} bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center shadow-2xs overflow-hidden`}>
-              <div className="text-[10px] uppercase font-bold text-slate-400 mb-2 tracking-wider">{ad.name} • Advertisement</div>
+              <div className="text-[10px] uppercase font-bold text-slate-400 mb-2 tracking-wider">Advertisement</div>
               <div className="overflow-x-auto text-xs text-slate-600 flex justify-center" dangerouslySetInnerHTML={{ __html: safeThirdPartyHtml }} />
             </div>
           );
@@ -263,7 +263,7 @@ export const AdSlotRenderer: React.FC<Props> = ({
         return (
           <div key={ad.id} className={`w-full ${visClass} rounded-2xl overflow-hidden shadow-2xs`}>
             <div className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider px-1">
-              {ad.name} • Google AdSense
+              Advertisement
             </div>
             <div className="w-full bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center flex flex-col items-center justify-center min-h-[90px] overflow-x-auto" dangerouslySetInnerHTML={{ __html: safeAdSenseHtml }} />
           </div>

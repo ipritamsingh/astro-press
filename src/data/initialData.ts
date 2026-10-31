@@ -78,6 +78,10 @@ export const initialCategories: Category[] = [
     slug: 'technology',
     description: 'Modern web architectures, static site generation, and serverless infrastructure.',
     color: '#2563eb',
+    icon: 'Cpu',
+    iconType: 'library',
+    showOnHomepage: true,
+    order: 1,
   },
   {
     id: 'cat-2',
@@ -85,6 +89,10 @@ export const initialCategories: Category[] = [
     slug: 'astro-islands',
     description: 'Zero-JS by default, islands architecture, and optimal Core Web Vitals.',
     color: '#7c3aed',
+    icon: 'Sparkles',
+    iconType: 'library',
+    showOnHomepage: true,
+    order: 2,
   },
   {
     id: 'cat-3',
@@ -92,6 +100,10 @@ export const initialCategories: Category[] = [
     slug: 'headless-cms',
     description: 'Decoupled editorial workflows, Sveltia CMS, and Git-backed content repos.',
     color: '#059669',
+    icon: 'FolderTree',
+    iconType: 'library',
+    showOnHomepage: true,
+    order: 3,
   },
   {
     id: 'cat-4',
@@ -99,6 +111,10 @@ export const initialCategories: Category[] = [
     slug: 'cloudflare-edge',
     description: 'Cloudflare Pages, Workers authenticator, caching, and global edge CDN.',
     color: '#ea580c',
+    icon: 'Cloud',
+    iconType: 'library',
+    showOnHomepage: true,
+    order: 4,
   },
   {
     id: 'cat-5',
@@ -106,6 +122,10 @@ export const initialCategories: Category[] = [
     slug: 'design-systems',
     description: 'WordPress Gutenberg inspiration, fluid typography, and clean editorial layouts.',
     color: '#db2777',
+    icon: 'Palette',
+    iconType: 'library',
+    showOnHomepage: true,
+    order: 5,
   },
 ];
 

@@ -474,6 +474,18 @@ export const HomepageBuilder: React.FC<Props> = ({ sections, posts = [], onSaveS
                       </div>
                     </div>
                   )}
+
+                  {sec.type === 'category-showcase' && (
+                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-start gap-2.5 text-xs text-purple-900">
+                      <FolderTree className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold block">Explore by Topic Category Cards</span>
+                        <p className="text-[11px] text-purple-700 mt-0.5">
+                          Category icons, accent colors, display orders, and homepage visibility are configured directly in the <strong>Taxonomies & Category Showcase</strong> manager.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

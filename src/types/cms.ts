@@ -114,6 +114,11 @@ export interface Category {
   description: string;
   color: string;
   postCount?: number;
+  icon?: string;
+  iconType?: 'library' | 'svg';
+  showOnHomepage?: boolean;
+  isActive?: boolean;
+  order?: number;
 }
 
 export interface Tag {

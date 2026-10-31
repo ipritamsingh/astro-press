@@ -2,6 +2,7 @@ import React from 'react';
 import { Post, Category, HomepageSection, ThemeSettings, HeroSectionConfig, Author, SiteSettings } from '../../types/cms';
 import { HeroSection } from './HeroSection';
 import { PostCardImage } from '../common/PostCardImage';
+import { CategoryIcon } from '../common/CategoryIcon';
 import { AdSlotRenderer } from '../common/AdSlotRenderer';
 import {
   Clock,
@@ -370,7 +371,16 @@ export const HomepageView: React.FC<Props> = ({
             }
             break;
 
-          case 'category-showcase':
+          case 'category-showcase': {
+            const showcaseCategories = categories
+              .filter((c) => c.showOnHomepage !== false && c.isActive !== false)
+              .sort((a, b) => {
+                const orderA = a.order ?? 999;
+                const orderB = b.order ?? 999;
+                if (orderA !== orderB) return orderA - orderB;
+                return a.name.localeCompare(b.name);
+              });
+
             sectionContent = (
               <section key={section.id} className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -384,27 +394,39 @@ export const HomepageView: React.FC<Props> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                  {categories.map((cat) => {
+                {/* Compact Category Navigation Strip (Inspired by Reference Design) */}
+                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none sm:flex-wrap">
+                  {showcaseCategories.map((cat) => {
                     const count = publishedPosts.filter((p) => {
                       const pCat = (p.category || '').trim().toLowerCase();
-                      return pCat === (cat.name || '').trim().toLowerCase() || pCat === (cat.slug || '').trim().toLowerCase() || pCat === cat.id;
+                      return (
+                        pCat === (cat.name || '').trim().toLowerCase() ||
+                        pCat === (cat.slug || '').trim().toLowerCase() ||
+                        pCat === cat.id
+                      );
                     }).length;
                     return (
-                      <div
+                      <button
                         key={cat.id}
                         onClick={() => onSelectCategory(cat)}
-                        className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-500 hover:shadow-md transition-all space-y-2"
+                        className="group shrink-0 inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-blue-500 hover:bg-blue-50/20 shadow-2xs transition-all cursor-pointer"
+                        title={`Browse ${cat.name} (${count} articles)`}
                       >
                         <div
-                          className="h-2 w-8 rounded-full transition-all group-hover:w-12"
-                          style={{ backgroundColor: cat.color || 'var(--ap-primary)' }}
-                        />
-                        <h3 className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors">
-                          {cat.name}
-                        </h3>
-                        <p className="text-xs text-slate-500">{count} {count === 1 ? 'article' : 'articles'}</p>
-                      </div>
+                          className="p-1.5 rounded-lg shrink-0 transition-transform group-hover:scale-110"
+                          style={{ backgroundColor: `${cat.color || '#2563eb'}12`, color: cat.color || '#2563eb' }}
+                        >
+                          <CategoryIcon category={cat} className="h-4 w-4" size={16} />
+                        </div>
+                        <div className="text-left">
+                          <span className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors block leading-tight">
+                            {cat.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">
+                            {count} {count === 1 ? 'article' : 'articles'}
+                          </span>
+                        </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -419,6 +441,7 @@ export const HomepageView: React.FC<Props> = ({
               </section>
             );
             break;
+          }
 
           case 'featured-grid': {
             const sectionFeaturedSlugs = section.featuredPostSlugs || [];
