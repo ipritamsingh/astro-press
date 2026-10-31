@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HomepageSection, SectionType } from '../../types/cms';
+import { HomepageSection, SectionType, Post } from '../../types/cms';
 import {
   LayoutTemplate,
   ArrowUp,
@@ -27,6 +27,7 @@ import {
 
 interface Props {
   sections: HomepageSection[];
+  posts?: Post[];
   onSaveSections: (sections: HomepageSection[]) => void;
 }
 
@@ -120,7 +121,7 @@ const SECTION_LIBRARY: {
   },
 ];
 
-export const HomepageBuilder: React.FC<Props> = ({ sections, onSaveSections }) => {
+export const HomepageBuilder: React.FC<Props> = ({ sections, posts = [], onSaveSections }) => {
   const [localSections, setLocalSections] = useState<HomepageSection[]>(sections);
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(sections[0]?.id || null);
@@ -429,6 +430,47 @@ export const HomepageBuilder: React.FC<Props> = ({ sections, onSaveSections }) =
                           onChange={(e) => updateSection(sec.id, { buttonUrl: e.target.value })}
                           className="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white"
                         />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Featured Stories Picker if featured-grid */}
+                  {sec.type === 'featured-grid' && (
+                    <div className="pt-3 border-t border-slate-200 space-y-2">
+                      <label className="text-xs font-bold text-slate-700 block">
+                        Select Featured Stories (Choose up to 3 articles)
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-white rounded-xl border border-slate-200">
+                        {posts
+                          .filter((p) => p.status === 'published')
+                          .map((post) => {
+                            const currentFeatured = sec.featuredPostSlugs || [];
+                            const isSelected = currentFeatured.includes(post.slug);
+                            return (
+                              <label
+                                key={post.id}
+                                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer text-xs transition-colors ${
+                                  isSelected ? 'bg-blue-50 border border-blue-200 font-bold text-blue-900' : 'hover:bg-slate-50 text-slate-700'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    let next = [...currentFeatured];
+                                    if (e.target.checked) {
+                                      if (next.length < 3) next.push(post.slug);
+                                    } else {
+                                      next = next.filter((s) => s !== post.slug);
+                                    }
+                                    updateSection(sec.id, { featuredPostSlugs: next });
+                                  }}
+                                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="truncate">{post.title}</span>
+                              </label>
+                            );
+                          })}
                       </div>
                     </div>
                   )}

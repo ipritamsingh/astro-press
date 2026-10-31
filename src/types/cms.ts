@@ -307,6 +307,7 @@ export interface HomepageSection {
   customContent?: string;
   buttonText?: string;
   buttonUrl?: string;
+  featuredPostSlugs?: string[];
 }
 
 export interface TemplateConfig {

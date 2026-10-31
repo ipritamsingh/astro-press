@@ -1405,6 +1405,7 @@ export default function App(props: AppProps = {}) {
           {adminView === 'homepage-builder' && (
             <HomepageBuilder
               sections={cms.homepageSections}
+              posts={cms.posts}
               onSaveSections={(s) => cms.updateHomepageSections(s)}
             />
           )}

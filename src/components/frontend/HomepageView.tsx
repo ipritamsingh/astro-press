@@ -46,7 +46,16 @@ export const HomepageView: React.FC<Props> = ({
   onNavigate,
   onSelectAuthor,
 }) => {
-  const publishedPosts = posts.filter((p) => p.status === 'published');
+  const publishedPosts = [...posts]
+    .filter((p) => p.status === 'published')
+    .sort((a, b) => {
+      const timeA = new Date(a.pubDate || 0).getTime();
+      const timeB = new Date(b.pubDate || 0).getTime();
+      if (timeB !== timeA) {
+        return timeB - timeA;
+      }
+      return (a.slug || a.id || '').localeCompare(b.slug || b.id || '');
+    });
   const heroPost = publishedPosts[0];
   const featuredPosts = publishedPosts.slice(1, 4);
 
@@ -411,7 +420,15 @@ export const HomepageView: React.FC<Props> = ({
             );
             break;
 
-          case 'featured-grid':
+          case 'featured-grid': {
+            const sectionFeaturedSlugs = section.featuredPostSlugs || [];
+            const configuredFeaturedPosts = sectionFeaturedSlugs.length > 0
+              ? sectionFeaturedSlugs
+                  .map((slug) => publishedPosts.find((p) => p.slug === slug || p.id === slug))
+                  .filter((p): p is Post => Boolean(p))
+              : [];
+            const activeFeaturedPosts = configuredFeaturedPosts.length > 0 ? configuredFeaturedPosts : featuredPosts;
+
             sectionContent = (
               <section key={section.id} className="space-y-6">
                 <div>
@@ -428,7 +445,7 @@ export const HomepageView: React.FC<Props> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {featuredPosts.map((post) => (
+                  {activeFeaturedPosts.map((post) => (
                     <article
                       key={post.id}
                       onClick={() => onSelectPost(post)}
@@ -482,6 +499,7 @@ export const HomepageView: React.FC<Props> = ({
               </section>
             );
             break;
+          }
 
           case 'latest-posts':
             sectionContent = (
