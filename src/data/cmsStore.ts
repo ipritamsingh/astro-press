@@ -122,20 +122,41 @@ export function loadStoredData(seed?: Partial<CMSDataState>): CMSDataState {
     let loadedPosts = parsed.posts || initialPosts;
     if (serverPosts.length > 0) {
       const postMap = new Map<string, Post>();
-      loadedPosts.forEach((p: Post) => postMap.set(p.slug, p));
+      // Seed postMap with all local stored posts using stable id/slug as keys
+      loadedPosts.forEach((p: Post) => {
+        const key = p.id || p.slug;
+        if (key) postMap.set(key, p);
+      });
+
       serverPosts.forEach((sp: Post) => {
-        const existing = postMap.get(sp.slug);
+        // Find existing post by exact id, slug, or post-slug matching
+        let existingKey: string | undefined;
+        let existing: Post | undefined;
+
+        for (const [k, p] of postMap.entries()) {
+          const idMatches = sp.id && (p.id === sp.id || p.id === `post-${sp.slug}` || p.id.replace(/\.md$/, '') === sp.id.replace(/\.md$/, ''));
+          const slugMatches = sp.slug && (p.slug === sp.slug || p.originalSlug === sp.slug);
+          if (idMatches || slugMatches) {
+            existingKey = k;
+            existing = p;
+            break;
+          }
+        }
+
         if (!existing) {
-          postMap.set(sp.slug, sp);
+          postMap.set(sp.id || sp.slug, sp);
         } else if (existing.status === 'trash') {
-          postMap.set(sp.slug, {
+          // CRITICAL: Preserve trashed status, originalStatus, and deletedAt across page reloads!
+          postMap.set(existingKey!, {
             ...sp,
+            ...existing,
             status: 'trash',
-            originalStatus: existing.originalStatus || sp.status,
-            deletedAt: existing.deletedAt,
+            originalStatus: existing.originalStatus || sp.status || 'published',
+            deletedAt: existing.deletedAt || new Date().toISOString(),
           });
-        } else if (existing.status !== 'published' && sp.status === 'published') {
-          postMap.set(sp.slug, { ...existing, ...sp, status: 'published' });
+        } else {
+          // Local edits take priority over static server build
+          postMap.set(existingKey!, { ...sp, ...existing });
         }
       });
       loadedPosts = Array.from(postMap.values());
@@ -515,9 +536,6 @@ export function useCMS(seed?: Partial<CMSDataState>) {
 
     // Run authoritative sync on mount in background
     syncWithAuthoritativeRemote().catch(() => {});
-    
-    // Run cleanup on mount
-    cleanupExpiredTrash();
 
     const handleUpdate = (e: any) => {
       if (e.detail) {
@@ -555,49 +573,57 @@ export function useCMS(seed?: Partial<CMSDataState>) {
 
   // POSTS
   const savePost = (post: Post, isPublishAction = false) => {
-    const existingIndex = data.posts.findIndex(
-      (p) =>
-        (post.id && p.id === p.id && p.id === post.id) ||
-        (post.slug && p.slug === p.slug) ||
-        (post.originalSlug && (p.slug === post.originalSlug || p.originalSlug === p.slug || p.slug === post.originalSlug)) ||
-        (p.id && post.slug && p.id === `post-${post.slug}`) ||
-        (post.id && post.slug && p.id === `post-${post.slug}`) ||
-        (post.originalSlug && p.id === `post-${post.originalSlug}`)
-    );
-    let newPosts: Post[];
-    if (existingIndex >= 0) {
-      newPosts = [...data.posts];
-      const existing = newPosts[existingIndex];
-      const preservedPubDate = existing.pubDate || post.pubDate || new Date().toISOString();
-      newPosts[existingIndex] = {
-        ...existing,
-        ...post,
-        id: existing.id || post.id || `post-${post.slug}`,
-        pubDate: preservedPubDate,
-        updatedDate: new Date().toISOString(),
-      };
-    } else {
-      newPosts = [{ ...post, id: post.id || `post-${post.slug}-${Date.now()}` }, ...data.posts];
-    }
-    const updated = { ...data, posts: newPosts };
-    saveStoredData(updated);
-    setData(updated);
+    setData((prevData) => {
+      const existingIndex = prevData.posts.findIndex(
+        (p) =>
+          (post.id && p.id === post.id) ||
+          (post.slug && p.slug === post.slug) ||
+          (post.originalSlug && (p.slug === post.originalSlug || p.originalSlug === post.slug)) ||
+          (p.id && post.slug && p.id === `post-${post.slug}`) ||
+          (post.id && post.slug && p.id === `post-${post.slug}`) ||
+          (post.originalSlug && p.id === `post-${post.originalSlug}`)
+      );
+      let newPosts: Post[];
+      if (existingIndex >= 0) {
+        newPosts = [...prevData.posts];
+        const existing = newPosts[existingIndex];
+        // Preserve original publication date unless administrator explicitly changes it
+        const preservedPubDate = post.pubDate || existing.pubDate || new Date().toISOString();
+        newPosts[existingIndex] = {
+          ...existing,
+          ...post,
+          id: existing.id || post.id || `post-${post.slug}`,
+          pubDate: preservedPubDate,
+          updatedDate: new Date().toISOString(),
+        };
+      } else {
+        const newPubDate = post.pubDate || new Date().toISOString();
+        newPosts = [{ ...post, pubDate: newPubDate, id: post.id || `post-${post.slug}-${Date.now()}` }, ...prevData.posts];
+      }
+      const updated = { ...prevData, posts: newPosts };
+      saveStoredData(updated);
 
-    // Only generate a production Git commit and Cloudflare deployment trigger when explicitly publishing
-    if (isPublishAction || post.status === 'published') {
-      recordCommit(`feat(post): update/publish article "${post.title}" [/posts/${post.slug}]`, updated);
-    }
+      if (isPublishAction || post.status === 'published') {
+        recordCommit(`feat(post): update/publish article "${post.title}" [/posts/${post.slug}]`, updated);
+      }
+      return updated;
+    });
   };
 
   const deletePost = (id: string) => {
     setData((prevData) => {
       const updatedPosts = prevData.posts.map((p) => {
-        if (p.id === id) {
+        const matches =
+          p.id === id ||
+          p.slug === id ||
+          (p.id && id && p.id.replace(/\.md$/, '') === id.replace(/\.md$/, '')) ||
+          (p.slug && id && `post-${p.slug}` === id);
+        if (matches) {
           return {
             ...p,
             status: 'trash',
-            originalStatus: p.status,
-            deletedAt: new Date().toISOString(),
+            originalStatus: p.status === 'trash' ? (p.originalStatus || 'published') : p.status,
+            deletedAt: p.deletedAt || new Date().toISOString(),
           } as Post;
         }
         return p;
@@ -612,7 +638,12 @@ export function useCMS(seed?: Partial<CMSDataState>) {
   const restorePost = (id: string) => {
     setData((prevData) => {
       const updatedPosts = prevData.posts.map((p) => {
-        if (p.id === id) {
+        const matches =
+          p.id === id ||
+          p.slug === id ||
+          (p.id && id && p.id.replace(/\.md$/, '') === id.replace(/\.md$/, '')) ||
+          (p.slug && id && `post-${p.slug}` === id);
+        if (matches) {
           return {
             ...p,
             status: p.originalStatus || 'draft',
@@ -630,41 +661,45 @@ export function useCMS(seed?: Partial<CMSDataState>) {
   };
 
   const permanentlyDeletePost = (id: string) => {
-    const target = data.posts.find((p) => p.id === id);
-    const updated = {
-      ...data,
-      posts: data.posts.filter((p) => p.id !== id),
-    };
-    saveStoredData(updated);
-    setData(updated);
-    if (target && target.slug && typeof window !== 'undefined') {
-      fetch('/api/content/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: target.slug, isPage: false }),
-      }).catch(() => {});
-    }
-    if (target && target.status === 'published') {
-      recordCommit(`chore(post): remove article "${target.title}"`, updated);
-    }
+    setData((prevData) => {
+      const target = prevData.posts.find(
+        (p) =>
+          p.id === id ||
+          p.slug === id ||
+          (p.id && id && p.id.replace(/\.md$/, '') === id.replace(/\.md$/, '')) ||
+          (p.slug && id && `post-${p.slug}` === id)
+      );
+      const updatedPosts = prevData.posts.filter((p) => {
+        const matches =
+          p.id === id ||
+          p.slug === id ||
+          (p.id && id && p.id.replace(/\.md$/, '') === id.replace(/\.md$/, '')) ||
+          (p.slug && id && `post-${p.slug}` === id);
+        return !matches;
+      });
+      const updated = {
+        ...prevData,
+        posts: updatedPosts,
+      };
+      saveStoredData(updated);
+
+      if (target && target.slug && typeof window !== 'undefined') {
+        fetch('/api/content/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: target.slug, isPage: false }),
+        }).catch(() => {});
+      }
+      if (target && target.status === 'published') {
+        recordCommit(`chore(post): remove article "${target.title}"`, updated);
+      }
+      return updated;
+    });
   };
 
-  const cleanupExpiredTrash = () => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const postsToKeep = data.posts.filter(p => {
-        if (p.status !== 'trash') return true;
-        if (!p.deletedAt) return true;
-        return new Date(p.deletedAt) > thirtyDaysAgo;
-    });
-    
-    if (postsToKeep.length !== data.posts.length) {
-        const updated = { ...data, posts: postsToKeep };
-        saveStoredData(updated);
-        setData(updated);
-    }
-  };
+  // Trashed posts are strictly retained in the CMS data store until the administrator
+  // explicitly chooses permanent deletion. Automatic on-mount purge is intentionally disabled.
+  const cleanupExpiredTrash = () => {};
 
   const duplicatePost = (id: string) => {
     const target = data.posts.find((p) => p.id === id);

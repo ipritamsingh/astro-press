@@ -51,6 +51,12 @@ export const PostsManager: React.FC<Props> = ({
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'title' | 'views'>('date-desc');
   const [selectedPostIds, setSelectedPostIds] = useState<string[]>([]);
 
+  const parsePostTimestamp = (dateVal?: string | number | Date | null): number => {
+    if (!dateVal) return 0;
+    const t = new Date(dateVal).getTime();
+    return isNaN(t) ? 0 : t;
+  };
+
   // Filter posts
   let filtered = posts.filter((p) => {
     if (activeTab === 'published' && p.status !== 'published') return false;
@@ -70,12 +76,30 @@ export const PostsManager: React.FC<Props> = ({
     return true;
   });
 
-  // Sort posts
+  // Sort posts deterministically
   filtered = [...filtered].sort((a, b) => {
-    if (sortBy === 'date-desc') return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
-    if (sortBy === 'date-asc') return new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime();
-    if (sortBy === 'title') return a.title.localeCompare(b.title);
-    if (sortBy === 'views') return (b.views || 0) - (a.views || 0);
+    if (sortBy === 'date-desc') {
+      const timeA = parsePostTimestamp(a.pubDate);
+      const timeB = parsePostTimestamp(b.pubDate);
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.id || b.slug || '').localeCompare(a.id || a.slug || '');
+    }
+    if (sortBy === 'date-asc') {
+      const timeA = parsePostTimestamp(a.pubDate);
+      const timeB = parsePostTimestamp(b.pubDate);
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || a.slug || '').localeCompare(b.id || b.slug || '');
+    }
+    if (sortBy === 'title') {
+      const comp = a.title.localeCompare(b.title);
+      if (comp !== 0) return comp;
+      return (a.id || a.slug || '').localeCompare(b.id || b.slug || '');
+    }
+    if (sortBy === 'views') {
+      const diff = (b.views || 0) - (a.views || 0);
+      if (diff !== 0) return diff;
+      return (b.id || b.slug || '').localeCompare(a.id || a.slug || '');
+    }
     return 0;
   });
 
@@ -102,6 +126,11 @@ export const PostsManager: React.FC<Props> = ({
     }
   };
 
+  const activeNonTrashCount = posts.filter((p) => p.status !== 'trash').length;
+  const publishedCount = posts.filter((p) => p.status === 'published').length;
+  const draftCount = posts.filter((p) => p.status === 'draft').length;
+  const trashCount = posts.filter((p) => p.status === 'trash').length;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header with Title and Add New button */}
@@ -110,7 +139,7 @@ export const PostsManager: React.FC<Props> = ({
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <span>Posts</span>
             <span className="text-xs bg-slate-200 text-slate-700 font-semibold px-2 py-0.5 rounded-full">
-              {posts.length}
+              {activeNonTrashCount}
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">Manage articles, blog dispatches, and architecture guides</p>
@@ -125,7 +154,7 @@ export const PostsManager: React.FC<Props> = ({
         </button>
       </div>
 
-      {/* WordPress-Style Tabs: All | Published | Drafts */}
+      {/* WordPress-Style Tabs: All | Published | Drafts | Trash */}
       <div className="flex items-center gap-4 text-xs font-semibold border-b border-slate-200 pb-2">
         <button
           onClick={() => setActiveTab('all')}
@@ -133,7 +162,7 @@ export const PostsManager: React.FC<Props> = ({
             activeTab === 'all' ? 'text-blue-600 font-bold border-b-2 border-blue-600 pb-2 -mb-2' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          All ({posts.length})
+          All ({activeNonTrashCount})
         </button>
         <button
           onClick={() => setActiveTab('published')}
@@ -141,7 +170,7 @@ export const PostsManager: React.FC<Props> = ({
             activeTab === 'published' ? 'text-blue-600 font-bold border-b-2 border-blue-600 pb-2 -mb-2' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          Published ({posts.filter((p) => p.status === 'published').length})
+          Published ({publishedCount})
         </button>
         <button
           onClick={() => setActiveTab('draft')}
@@ -149,7 +178,7 @@ export const PostsManager: React.FC<Props> = ({
             activeTab === 'draft' ? 'text-blue-600 font-bold border-b-2 border-blue-600 pb-2 -mb-2' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          Drafts ({posts.filter((p) => p.status === 'draft').length})
+          Drafts ({draftCount})
         </button>
         <button
           onClick={() => setActiveTab('trash')}
@@ -157,15 +186,15 @@ export const PostsManager: React.FC<Props> = ({
             activeTab === 'trash' ? 'text-blue-600 font-bold border-b-2 border-blue-600 pb-2 -mb-2' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          Trash ({posts.filter((p) => p.status === 'trash').length})
+          Trash ({trashCount})
         </button>
       </div>
 
       {/* Trash View */}
-      {activeTab === 'trash' && posts.filter(p => p.status === 'trash').length === 0 && (
+      {activeTab === 'trash' && trashCount === 0 && (
         <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center">
             <h3 className="text-lg font-bold text-slate-900">Trash is empty</h3>
-            <p className="text-slate-500 text-xs mt-1">Deleted posts will remain here for 30 days before being permanently removed.</p>
+            <p className="text-slate-500 text-xs mt-1">Deleted posts will remain here until explicitly restored or permanently deleted.</p>
         </div>
       )}
 
@@ -403,16 +432,11 @@ export const PostsManager: React.FC<Props> = ({
                       <td className="p-3.5 whitespace-nowrap text-slate-500 text-[11px]">
                         {activeTab === 'trash' ? (
                            (() => {
-                               if (!post.deletedAt) return 'N/A';
-                               const deletedDate = new Date(post.deletedAt);
-                               const expiryDate = new Date(deletedDate);
-                               expiryDate.setDate(expiryDate.getDate() + 30);
-                               const diffTime = expiryDate.getTime() - new Date().getTime();
-                               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                               return diffDays <= 0 ? 'Expired' : (diffDays < 1 ? 'Less than 1 day' : `${diffDays} days remaining`);
+                               if (!post.deletedAt) return 'In Trash';
+                               return `In Trash since ${new Date(post.deletedAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}`;
                            })()
                         ) : (
-                            new Date(post.pubDate).toLocaleDateString()
+                            new Date(post.pubDate || Date.now()).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
                         )}
                       </td>
 

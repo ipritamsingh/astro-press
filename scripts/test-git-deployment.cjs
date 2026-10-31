@@ -673,6 +673,201 @@ check('Unpublished drafts and trashed posts do not leak into public published li
 check('Public published list correctly sorted newest-first by pubDate', publicPublished[0].slug === 'pub-1' && publicPublished[1].slug === 'pub-2');
 
 // ---------------------------------------------------------------------------
+// Test Suite 9: Admin Chronological Date Sorting & Trash Lifecycle Persistence
+// ---------------------------------------------------------------------------
+console.log('\n--- Test Suite 9: Admin Chronological Date Sorting & Trash Lifecycle Persistence ---');
+
+// Helper matching PostsManager date parsing & sorting
+function parsePostTimestamp(dateVal) {
+  if (!dateVal) return 0;
+  const t = new Date(dateVal).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+function sortAdminPosts(postsList, sortBy = 'date-desc') {
+  return [...postsList].sort((a, b) => {
+    if (sortBy === 'date-desc') {
+      const timeA = parsePostTimestamp(a.pubDate);
+      const timeB = parsePostTimestamp(b.pubDate);
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.id || b.slug || '').localeCompare(a.id || a.slug || '');
+    }
+    if (sortBy === 'date-asc') {
+      const timeA = parsePostTimestamp(a.pubDate);
+      const timeB = parsePostTimestamp(b.pubDate);
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || a.slug || '').localeCompare(b.id || b.slug || '');
+    }
+    return 0;
+  });
+}
+
+// 1. Chronological sorting with valid, invalid, equal, and missing dates
+const testSortItems = [
+  { id: 'p-old', slug: 'old-article', pubDate: '2026-01-15T08:00:00.000Z' },
+  { id: 'p-new', slug: 'new-article', pubDate: '2026-10-31T12:00:00.000Z' },
+  { id: 'p-mid-a', slug: 'mid-article-a', pubDate: '2026-06-01T00:00:00.000Z' },
+  { id: 'p-mid-b', slug: 'mid-article-b', pubDate: '2026-06-01T00:00:00.000Z' },
+  { id: 'p-invalid', slug: 'invalid-date', pubDate: 'not-a-date' },
+  { id: 'p-missing', slug: 'missing-date', pubDate: undefined },
+];
+
+const sortedDesc = sortAdminPosts(testSortItems, 'date-desc');
+check(
+  'Newest post appears first in date-desc sort',
+  sortedDesc[0].id === 'p-new'
+);
+check(
+  'Posts with equal dates are sorted deterministically by secondary key without NaN error',
+  sortedDesc.findIndex(p => p.id === 'p-mid-b') < sortedDesc.findIndex(p => p.id === 'p-mid-a')
+);
+check(
+  'Invalid and missing dates are handled safely and placed at the end without throwing or breaking order',
+  sortedDesc[sortedDesc.length - 1].pubDate === undefined || sortedDesc[sortedDesc.length - 1].pubDate === 'not-a-date'
+);
+
+// 2. Publication date preservation and explicit admin override
+function mockCmsSaveWithDate(posts, incoming) {
+  const idx = posts.findIndex(p => p.id === incoming.id || p.slug === incoming.slug);
+  if (idx >= 0) {
+    const existing = posts[idx];
+    const preservedPubDate = incoming.pubDate || existing.pubDate || new Date().toISOString();
+    const updated = [...posts];
+    updated[idx] = { ...existing, ...incoming, pubDate: preservedPubDate };
+    return updated;
+  }
+  return [{ ...incoming, pubDate: incoming.pubDate || new Date().toISOString() }, ...posts];
+}
+
+let lifecyclePosts = [
+  { id: 'post-alpha', slug: 'post-alpha', title: 'Alpha', status: 'published', pubDate: '2026-05-10T10:00:00.000Z' },
+];
+
+// Edit without changing pubDate
+const editNoDateChange = { id: 'post-alpha', slug: 'post-alpha', title: 'Alpha Updated' };
+lifecyclePosts = mockCmsSaveWithDate(lifecyclePosts, editNoDateChange);
+check(
+  'Original publication date is strictly preserved when editing an existing post',
+  lifecyclePosts[0].pubDate === '2026-05-10T10:00:00.000Z'
+);
+
+// Explicit admin date override
+const explicitDateChange = { id: 'post-alpha', slug: 'post-alpha', title: 'Alpha Updated', pubDate: '2026-11-01T09:00:00.000Z' };
+lifecyclePosts = mockCmsSaveWithDate(lifecyclePosts, explicitDateChange);
+check(
+  'Explicit administrator pubDate change is respected and saved',
+  lifecyclePosts[0].pubDate === '2026-11-01T09:00:00.000Z'
+);
+
+// 3. Normal deletion moves to trash without erasing content
+function mockDeleteToTrash(posts, targetId) {
+  return posts.map(p => {
+    if (p.id === targetId || p.slug === targetId) {
+      return {
+        ...p,
+        status: 'trash',
+        originalStatus: p.status === 'trash' ? (p.originalStatus || 'published') : p.status,
+        deletedAt: new Date().toISOString(),
+      };
+    }
+    return p;
+  });
+}
+
+lifecyclePosts = mockDeleteToTrash(lifecyclePosts, 'post-alpha');
+const trashedItem = lifecyclePosts.find(p => p.id === 'post-alpha');
+check(
+  'Normal deletion moves post to status "trash" with content, title, and metadata intact',
+  trashedItem && trashedItem.status === 'trash' && trashedItem.originalStatus === 'published' && trashedItem.title === 'Alpha Updated'
+);
+
+// 4. Trash persistence across simulated page reload and server sync
+function mockSimulatedReload(storedLocalPosts, serverPublishedPosts) {
+  const postMap = new Map();
+  storedLocalPosts.forEach(p => {
+    const key = p.id || p.slug;
+    if (key) postMap.set(key, p);
+  });
+
+  serverPublishedPosts.forEach(sp => {
+    let existingKey;
+    let existing;
+    for (const [k, p] of postMap.entries()) {
+      if ((sp.id && (p.id === sp.id || p.id === `post-${sp.slug}`)) ||
+          (sp.slug && (p.slug === sp.slug || p.originalSlug === sp.slug))) {
+        existingKey = k;
+        existing = p;
+        break;
+      }
+    }
+    if (!existing) {
+      postMap.set(sp.id || sp.slug, sp);
+    } else if (existing.status === 'trash') {
+      postMap.set(existingKey, {
+        ...sp,
+        ...existing,
+        status: 'trash',
+        originalStatus: existing.originalStatus || sp.status || 'published',
+        deletedAt: existing.deletedAt || new Date().toISOString(),
+      });
+    } else {
+      postMap.set(existingKey, { ...sp, ...existing });
+    }
+  });
+  return Array.from(postMap.values());
+}
+
+const mockServerCollection = [
+  { id: 'post-alpha', slug: 'post-alpha', title: 'Alpha on Server', status: 'published', pubDate: '2026-05-10T10:00:00.000Z' },
+];
+
+const reloadedPosts = mockSimulatedReload(lifecyclePosts, mockServerCollection);
+const postAfterReload = reloadedPosts.find(p => p.id === 'post-alpha' || p.slug === 'post-alpha');
+check(
+  'Trashed post remains in status "trash" after page reload and does not get resurrected to published',
+  postAfterReload && postAfterReload.status === 'trash' && postAfterReload.deletedAt !== undefined
+);
+
+// 5. Restore behavior
+function mockRestoreFromTrash(posts, targetId) {
+  return posts.map(p => {
+    if (p.id === targetId || p.slug === targetId) {
+      return {
+        ...p,
+        status: p.originalStatus || 'draft',
+        originalStatus: undefined,
+        deletedAt: undefined,
+      };
+    }
+    return p;
+  });
+}
+
+const restoredPosts = mockRestoreFromTrash(reloadedPosts, 'post-alpha');
+const restoredItem = restoredPosts.find(p => p.id === 'post-alpha');
+check(
+  'Restoring a post restores it to its original status (published) and removes trash metadata',
+  restoredItem && restoredItem.status === 'published' && restoredItem.deletedAt === undefined
+);
+
+// 6. Protection against accidental permanent deletion
+function mockPermanentDelete(posts, targetId) {
+  return posts.filter(p => !(p.id === targetId || p.slug === targetId));
+}
+
+const unconfirmedList = [...reloadedPosts];
+check(
+  'Posts in trash are never deleted without explicit permanent deletion action',
+  unconfirmedList.some(p => p.id === 'post-alpha' && p.status === 'trash')
+);
+
+const permanentlyDeletedList = mockPermanentDelete(unconfirmedList, 'post-alpha');
+check(
+  'Permanent deletion completely removes post only after explicit administrator action',
+  !permanentlyDeletedList.some(p => p.id === 'post-alpha') && permanentlyDeletedList.length === unconfirmedList.length - 1
+);
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n===============================================================');

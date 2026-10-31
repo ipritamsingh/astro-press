@@ -183,6 +183,7 @@ export const GutenbergEditor: React.FC<Props> = ({
   const [featuredImage, setFeaturedImage] = useState(postItem.featuredImage || '');
   const [excerpt, setExcerpt] = useState(postItem.excerpt || '');
   const [template, setTemplate] = useState<Post['template']>(postItem.template || 'standard');
+  const [pubDate, setPubDate] = useState<string>(postItem.pubDate || new Date().toISOString());
 
   // SEO
   const [seo, setSeo] = useState<PostSEO>(
@@ -835,7 +836,7 @@ export const GutenbergEditor: React.FC<Props> = ({
   const generateYamlFrontmatter = (targetStatus?: Post['status']): string => {
     const activeStatus = targetStatus || status || 'draft';
     const cleanSlug = slug || originalSlug || generateSlug(title);
-    const cleanDate = (initialItem as Post).pubDate || new Date().toISOString();
+    const cleanDate = pubDate || (initialItem as Post).pubDate || new Date().toISOString();
 
     const frontmatterObj: any = isPage
       ? {
@@ -942,7 +943,7 @@ export const GutenbergEditor: React.FC<Props> = ({
           title: trimmedTitle,
           slug: finalSlug,
           originalSlug: originalSlug || undefined,
-          pubDate: (initialItem as Post).pubDate || new Date().toISOString(),
+          pubDate: pubDate || (initialItem as Post).pubDate || new Date().toISOString(),
           updatedDate: new Date().toISOString(),
           status: targetStatus,
           author,
@@ -1053,6 +1054,36 @@ export const GutenbergEditor: React.FC<Props> = ({
                   <option value="scheduled">Scheduled</option>
                 </select>
               </div>
+
+              {!isPage && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">Publish Date</span>
+                  <input
+                    type="datetime-local"
+                    value={(() => {
+                      try {
+                        const d = new Date(pubDate);
+                        if (!isNaN(d.getTime())) {
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        }
+                      } catch {}
+                      return '';
+                    })()}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        try {
+                          const parsed = new Date(e.target.value);
+                          if (!isNaN(parsed.getTime())) {
+                            setPubDate(parsed.toISOString());
+                          }
+                        } catch {}
+                      }
+                    }}
+                    className="bg-slate-100 font-semibold text-slate-800 rounded px-2 py-1 border border-slate-200 text-[11px]"
+                  />
+                </div>
+              )}
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                 <button

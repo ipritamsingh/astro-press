@@ -376,81 +376,48 @@ export function mergeCMSStates(localState: CMSDataState, remoteState: Partial<CM
   if (remoteState.posts && remoteState.posts.length > 0) {
     const postMap = new Map<string, Post>();
 
-    // Start with remote authoritative posts, deduplicating any duplicate remote files by normalized title
+    // Start with remote authoritative posts, keyed by slug
     remoteState.posts.forEach((rp) => {
-      const rpNormKey = normalizePostTitleKey(rp.title);
-      const existingRemoteKey = Array.from(postMap.entries()).find(([k, p]) => {
-        if (k === rp.slug || p.slug === rp.slug) return true;
-        if (rpNormKey && rpNormKey.length >= 8) {
-          return normalizePostTitleKey(p.title) === rpNormKey;
-        }
-        return false;
-      });
-
-      if (existingRemoteKey) {
-        // Keep the more recent or preferred entry and consolidate duplicate slug
-        const existing = existingRemoteKey[1];
-        if (existing.status === 'trash') {
-          const preferred = {
-            ...rp,
-            ...existing,
-            status: 'trash' as const,
-            originalStatus: existing.originalStatus || rp.status,
-            deletedAt: existing.deletedAt,
-          };
-          postMap.delete(existingRemoteKey[0]);
-          if (existing.slug !== preferred.slug) postMap.delete(existing.slug);
-          postMap.set(preferred.slug, preferred);
-        } else {
-          const isRpNewer = new Date(rp.pubDate || 0).getTime() >= new Date(existing.pubDate || 0).getTime();
-          const preferred = isRpNewer ? { ...existing, ...rp } : { ...rp, ...existing };
-          postMap.delete(existingRemoteKey[0]);
-          if (existing.slug !== preferred.slug) postMap.delete(existing.slug);
-          postMap.set(preferred.slug, preferred);
-        }
-      } else {
-        postMap.set(rp.slug, rp);
-      }
+      postMap.set(rp.slug, rp);
     });
 
-    // Merge local posts
+    // Merge local posts with priority on local state (especially trashed or newly edited posts)
     localState.posts.forEach((lp) => {
-      const lpNormKey = normalizePostTitleKey(lp.title);
-      const existingKey = Array.from(postMap.entries()).find(
+      const existingEntry = Array.from(postMap.entries()).find(
         ([key, post]) =>
           key === lp.slug ||
           post.slug === lp.slug ||
           (lp.id && (post.id === lp.id || post.id === `post-${lp.slug}` || lp.id === `post-${post.slug}`)) ||
-          (lp.originalSlug && (post.slug === lp.originalSlug || key === lp.originalSlug || post.id === `post-${lp.originalSlug}`)) ||
-          (lpNormKey && lpNormKey.length >= 8 && normalizePostTitleKey(post.title) === lpNormKey)
+          (lp.originalSlug && (post.slug === lp.originalSlug || key === lp.originalSlug || post.id === `post-${lp.originalSlug}`))
       );
 
-      if (!existingKey) {
-        // Local newly drafted or created post that hasn't been published to remote yet
+      if (!existingEntry) {
+        // Local newly drafted, created, or trashed post that hasn't been published to remote yet
         postMap.set(lp.slug, lp);
       } else {
+        const [existingKey, existingPost] = existingEntry;
         // If slug was renamed, delete old slug entry to prevent duplicate posts
-        if (existingKey[0] !== lp.slug) {
-          postMap.delete(existingKey[0]);
+        if (existingKey !== lp.slug) {
+          postMap.delete(existingKey);
         }
-        if (existingKey[1].slug !== lp.slug) {
-          postMap.delete(existingKey[1].slug);
+        if (existingPost.slug !== lp.slug) {
+          postMap.delete(existingPost.slug);
         }
+
         // Local updated content takes priority during active editing session, preserving trash if trashed
-        const existingPost = existingKey[1];
         if (existingPost.status === 'trash' || lp.status === 'trash') {
           const trashedPost = lp.status === 'trash' ? lp : existingPost;
           postMap.set(lp.slug, {
-            ...existingKey[1],
+            ...existingPost,
             ...lp,
             ...trashedPost,
             status: 'trash' as const,
-            originalStatus: trashedPost.originalStatus || lp.status || existingKey[1].status,
+            originalStatus: trashedPost.originalStatus || lp.originalStatus || lp.status || existingPost.status,
             deletedAt: trashedPost.deletedAt || new Date().toISOString(),
-            id: existingKey[1].id || lp.id,
+            id: existingPost.id || lp.id,
           });
         } else {
-          postMap.set(lp.slug, { ...existingKey[1], ...lp, id: existingKey[1].id || lp.id });
+          postMap.set(lp.slug, { ...existingPost, ...lp, id: existingPost.id || lp.id });
         }
       }
     });
