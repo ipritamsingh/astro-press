@@ -12,7 +12,7 @@ tags:
   - WordPress
   - Cloudflare Pages
 featuredImage: https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80
-excerpt: Explore how combining the familiar editorial feel of WordPress with the blazing static speed of Astro and the Git-native simplicity of Sveltia CMS revolutionizes modern publishing.
+excerpt: Explore how combining the familiar editorial feel of WordPress with the blazing static speed of Astro and the Git-native simplicity of Sveltia CMS
 readingTime: 6
 template: cover-hero
 blocks:

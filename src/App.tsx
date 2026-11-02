@@ -78,7 +78,7 @@ try {
 import React, { useState, useEffect } from 'react';
 import { useCMS } from './data/cmsStore';
 import { Post, Page, Category, Tag, GutenbergBlock, HeroSectionConfig, Author, MediaItem, Comment, Menu, HomepageSection, ThemeSettings, SiteSettings, TemplateConfig } from './types/cms';
-import { calculateRobotsDirective } from './utils/seoUtils';
+import { calculateRobotsDirective, cleanEditorialExcerpt } from './utils/seoUtils';
 
 // Frontend Components
 import { WebsiteHeader } from './components/frontend/WebsiteHeader';
@@ -1286,7 +1286,7 @@ export default function App(props: AppProps = {}) {
                   category: cms.categories[0]?.name || 'Technology',
                   tags: ['QuickDraft'],
                   featuredImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
-                  excerpt: content.substring(0, 140),
+                  excerpt: cleanEditorialExcerpt(content, 140),
                   readingTime: 3,
                   template: 'standard',
                   blocks: [
@@ -1300,7 +1300,7 @@ export default function App(props: AppProps = {}) {
                   body: content,
                   seo: {
                     metaTitle: title,
-                    metaDescription: content.substring(0, 140),
+                    metaDescription: cleanEditorialExcerpt(content, 140),
                     focusKeyword: '',
                     robotsIndex: false,
                     robotsFollow: false,

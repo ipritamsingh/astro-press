@@ -21,6 +21,7 @@ import {
   parseFrontmatterAndMarkdown,
 } from './contentSyncService';
 import { getSessionToken } from './authService';
+import { cleanEditorialExcerpt } from '../utils/seoUtils';
 
 export interface PublishResult {
   success: boolean;
@@ -368,8 +369,8 @@ export async function calculateGitBlobSha(content: string): Promise<string> {
 }
 
 function formatPostToMarkdown(post: Post): string {
-  const cleanExcerpt = (post.excerpt || '').replace(/!\[.*?\]\(.*?\)/g, '').trim();
-  const cleanMetaDesc = (post.seo?.metaDescription || post.excerpt || '').replace(/!\[.*?\]\(.*?\)/g, '').trim();
+  const cleanExcerpt = cleanEditorialExcerpt(post.excerpt || '');
+  const cleanMetaDesc = cleanEditorialExcerpt(post.seo?.metaDescription || post.excerpt || '');
 
   const data = {
     title: post.title || '',
@@ -407,7 +408,7 @@ ${post.body || ''}`;
 }
 
 function formatPageToMarkdown(page: Page): string {
-  const cleanMetaDesc = (page.seo?.metaDescription || '').replace(/!\[.*?\]\(.*?\)/g, '').trim();
+  const cleanMetaDesc = cleanEditorialExcerpt(page.seo?.metaDescription || '');
 
   const data = {
     title: page.title || '',

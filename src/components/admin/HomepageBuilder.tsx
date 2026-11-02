@@ -31,13 +31,28 @@ interface Props {
   onSaveSections: (sections: HomepageSection[]) => void;
 }
 
+const getSectionIcon = (type: SectionType) => {
+  switch (type) {
+    case 'hero': return <Sparkles className="h-5 w-5 text-amber-500" />;
+    case 'featured-grid': return <LayoutTemplate className="h-5 w-5 text-blue-500" />;
+    case 'latest-posts': return <Sliders className="h-5 w-5 text-emerald-500" />;
+    case 'category-showcase': return <FolderTree className="h-5 w-5 text-purple-500" />;
+    case 'newsletter': return <Mail className="h-5 w-5 text-rose-500" />;
+    case 'faq': return <HelpCircle className="h-5 w-5 text-indigo-500" />;
+    case 'cta': return <ShieldCheck className="h-5 w-5 text-teal-500" />;
+    case 'testimonials': return <Star className="h-5 w-5 text-amber-500" />;
+    case 'brand-logos': return <Columns className="h-5 w-5 text-slate-500" />;
+    case 'custom-html': return <Code className="h-5 w-5 text-cyan-500" />;
+    default: return <LayoutTemplate className="h-5 w-5 text-blue-500" />;
+  }
+};
+
 const SECTION_LIBRARY: {
   type: SectionType;
   name: string;
   description: string;
   defaultTitle: string;
   defaultSubtitle: string;
-  icon: React.ReactNode;
 }[] = [
   {
     type: 'hero',
@@ -45,7 +60,6 @@ const SECTION_LIBRARY: {
     description: 'Full-bleed high-impact story showcase with gradient overlay and action CTA',
     defaultTitle: 'The Modern Publishing Standard',
     defaultSubtitle: 'Where WordPress editorial ergonomics meets Astro performance and edge hosting.',
-    icon: <Sparkles className="h-5 w-5 text-amber-500" />,
   },
   {
     type: 'featured-grid',
@@ -53,7 +67,6 @@ const SECTION_LIBRARY: {
     description: 'Curated 2-3 column editorial card grid with tags and reading times',
     defaultTitle: 'Featured Stories & Architecture Guides',
     defaultSubtitle: 'Handpicked deep-dives into modern web development and publishing.',
-    icon: <LayoutTemplate className="h-5 w-5 text-blue-500" />,
   },
   {
     type: 'latest-posts',
@@ -61,7 +74,6 @@ const SECTION_LIBRARY: {
     description: 'Chronological post list with customizable column layout and category filters',
     defaultTitle: 'Latest Dispatches & Insights',
     defaultSubtitle: 'Fresh tutorials, architectural breakdowns, and editorial workflows.',
-    icon: <Sliders className="h-5 w-5 text-emerald-500" />,
   },
   {
     type: 'category-showcase',
@@ -69,7 +81,6 @@ const SECTION_LIBRARY: {
     description: 'Visual topic pills and category cards with post count indicators',
     defaultTitle: 'Explore by Topic',
     defaultSubtitle: 'Browse articles categorized across our core engineering disciplines.',
-    icon: <FolderTree className="h-5 w-5 text-purple-500" />,
   },
   {
     type: 'newsletter',
@@ -77,7 +88,6 @@ const SECTION_LIBRARY: {
     description: 'Conversion-optimized newsletter signup card for subscriber growth',
     defaultTitle: 'Stay Ahead of the Headless CMS Frontier',
     defaultSubtitle: 'Join 14,000+ engineers receiving our weekly curation of Astro and edge patterns.',
-    icon: <Mail className="h-5 w-5 text-rose-500" />,
   },
   {
     type: 'faq',
@@ -85,7 +95,6 @@ const SECTION_LIBRARY: {
     description: 'Interactive expandable FAQ section that automatically outputs FAQPage JSON-LD schema',
     defaultTitle: 'Frequently Asked Questions',
     defaultSubtitle: 'Everything you need to know about AstroPress, Sveltia CMS, and Cloudflare Pages.',
-    icon: <HelpCircle className="h-5 w-5 text-indigo-500" />,
   },
   {
     type: 'cta',
@@ -93,7 +102,6 @@ const SECTION_LIBRARY: {
     description: 'Highlighted promotional banner with title, description, and action button',
     defaultTitle: 'Ready to Deploy Your Own Headless CMS?',
     defaultSubtitle: 'Clone the repository and deploy to Cloudflare Pages in under 2 minutes.',
-    icon: <ShieldCheck className="h-5 w-5 text-teal-500" />,
   },
   {
     type: 'testimonials',
@@ -101,7 +109,6 @@ const SECTION_LIBRARY: {
     description: 'Social proof quote cards from team editors, contributors, and readers',
     defaultTitle: 'Loved by Editorial Teams Worldwide',
     defaultSubtitle: 'See what publishers and engineers say about migrating from legacy platforms.',
-    icon: <Star className="h-5 w-5 text-amber-500" />,
   },
   {
     type: 'brand-logos',
@@ -109,7 +116,6 @@ const SECTION_LIBRARY: {
     description: 'Row of partner logos (Astro, Sveltia, Cloudflare, React, TypeScript)',
     defaultTitle: 'Powered by Modern Web Standards',
     defaultSubtitle: 'Built on top of the world’s most robust open-source edge technologies.',
-    icon: <Columns className="h-5 w-5 text-slate-500" />,
   },
   {
     type: 'custom-html',
@@ -117,7 +123,6 @@ const SECTION_LIBRARY: {
     description: 'Freeform HTML or Markdown block for custom embeds, widgets, or notices',
     defaultTitle: 'Custom Information Block',
     defaultSubtitle: 'Render any custom markup directly into the homepage flow.',
-    icon: <Code className="h-5 w-5 text-cyan-500" />,
   },
 ];
 
@@ -524,7 +529,7 @@ export const HomepageBuilder: React.FC<Props> = ({ sections, posts = [], onSaveS
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
-                      {item.icon}
+                      {getSectionIcon(item.type)}
                     </div>
                     <span className="font-bold text-sm text-slate-900 group-hover:text-blue-700">
                       {item.name}

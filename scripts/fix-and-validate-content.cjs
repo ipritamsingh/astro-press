@@ -9,6 +9,31 @@ const dirs = [
 
 let fixedCount = 0;
 
+function cleanEditorialExcerpt(raw, maxLength = 160) {
+  if (!raw || typeof raw !== 'string') return '';
+  const cleaned = raw
+    .replace(/!\[.*?\](?:\(.*?\)|[^\s\n]*)?/g, '')
+    .replace(/\[([^\]]+)\](?:\([^)]*\)|[^\s\n]*)?/g, '$1')
+    .replace(/(?:^|\n|\s)>\s*/g, ' ')
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/`{1,3}[^`]*`{1,3}/g, '')
+    .replace(/`/g, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/(?:^|\n)\s*[-*+]\s+/g, ' ')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (cleaned.length <= maxLength) {
+    return cleaned.replace(/["'“”‘’]+$/g, '').trim();
+  }
+
+  const truncated = cleaned.slice(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(' ');
+  const safeText = (lastSpace > maxLength * 0.7 ? truncated.slice(0, lastSpace) : truncated).trim();
+  return safeText.replace(/["'“”‘’.,;:!?\-]+$/g, '').trim();
+}
+
 for (const dir of dirs) {
   if (!fs.existsSync(dir)) continue;
   const files = fs.readdirSync(dir);
@@ -28,32 +53,15 @@ for (const dir of dirs) {
     const body = match[2];
 
     try {
-      let data;
-      try {
-        data = yaml.load(frontmatterRaw);
-      } catch (parseErr) {
-        console.log(`[NOTICE] Standard YAML parse failed for ${filePath}, attempting manual cleanup...`);
-        // Fallback: extract title, slug, etc. or clean multiline quotes
-        const cleanedFrontmatter = frontmatterRaw
-          .replace(/excerpt:\s*"([\s\S]*?)"(\s*\n|$)/g, (m, p1) => {
-            const clean = p1.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim();
-            return `excerpt: "${clean}"\n`;
-          })
-          .replace(/metaDescription:\s*"([\s\S]*?)"(\s*\n|$)/g, (m, p1) => {
-            const clean = p1.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim();
-            return `metaDescription: "${clean}"\n`;
-          });
-        data = yaml.load(cleanedFrontmatter);
-      }
+      let data = yaml.load(frontmatterRaw);
 
-      // Clean excerpt and metaDescription if they contain markdown image syntax starting with !
       if (data) {
         if (data.excerpt && typeof data.excerpt === 'string') {
-          data.excerpt = data.excerpt.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim();
+          data.excerpt = cleanEditorialExcerpt(data.excerpt);
         }
         if (data.seo) {
           if (data.seo.metaDescription && typeof data.seo.metaDescription === 'string') {
-            data.seo.metaDescription = data.seo.metaDescription.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim();
+            data.seo.metaDescription = cleanEditorialExcerpt(data.seo.metaDescription);
           }
         }
       }

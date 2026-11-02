@@ -10,9 +10,8 @@ tags:
   - Astro
   - Sveltia CMS
 featuredImage: /uploads/1000402910.webp
-excerpt: Title of your new story... Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter. ![1000402910](/upload
+excerpt: Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter.
 readingTime: 4
-template: standard
 blocks:
   - id: md-h2-0
     type: heading
@@ -43,8 +42,8 @@ blocks:
         - title: How does Sveltia CMS persist content to GitHub?
           content: Sveltia CMS works natively with GitHub API and OAuth, saving Markdown files with YAML frontmatter in src/content/posts/ and image assets in public/images/.
 seo:
-  metaTitle: New vheck
-  metaDescription: Title of your new story... Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter. ![1000402910](/upload
+  metaTitle: Github token fix update
+  metaDescription: Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter.
   focusKeyword: ''
   robotsIndex: true
   robotsFollow: true

@@ -2,7 +2,7 @@
   "siteTitle": "AstroPress",
   "siteTagline": "WordPress Editorial Ergonomics with Astro Performance",
   "siteDescription": "Production-ready headless CMS builder combining Sveltia CMS, Astro frontend architecture, Gutenberg-style block editor, theme customizer, GitHub backend, and Cloudflare Pages deployment.",
-  "siteUrl": "https://astropress.pages.dev",
+  "siteUrl": "https://astro-press.pages.dev",
   "logoUrl": "/uploads/1000405169.webp",
   "faviconUrl": "/uploads/1000405169.webp",
   "defaultOgImage": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80",
@@ -23,7 +23,7 @@
     "globalIndexing": true,
     "postsIndexing": true,
     "pagesIndexing": true,
-    "categoriesIndexing": false,
+    "categoriesIndexing": true,
     "tagsIndexing": false,
     "paginationPagesIndexing": false,
     "searchResultsIndexing": false

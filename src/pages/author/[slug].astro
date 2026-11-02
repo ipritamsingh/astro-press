@@ -75,6 +75,38 @@ const authorSlug = author.slug || author.name.toLowerCase().replace(/[^a-z0-9]+/
 const canonicalUrl = `${siteUrl}/author/${authorSlug}/`;
 const pageTitle = author.seoTitle || `${author.name} — Author Profile — ${siteTitle}`;
 const pageDesc = author.seoDescription || author.bio || `Read articles, analysis, and insights authored by ${author.name} on ${siteTitle}.`;
+
+const authorSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'ProfilePage',
+      '@id': `${canonicalUrl}#webpage`,
+      url: canonicalUrl,
+      name: pageTitle,
+      description: pageDesc,
+      isPartOf: { '@type': 'WebSite', '@id': `${siteUrl}#website` },
+      mainEntity: {
+        '@type': 'Person',
+        '@id': `${canonicalUrl}#person`,
+        name: author.name,
+        description: author.bio || undefined,
+        image: author.avatar ? (author.avatar.startsWith('http') ? author.avatar : `${siteUrl}${author.avatar.startsWith('/') ? '' : '/'}${author.avatar}`) : undefined,
+        jobTitle: author.role || author.designation || undefined,
+        url: canonicalUrl,
+      },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${canonicalUrl}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+        { '@type': 'ListItem', position: 2, name: 'Authors', item: `${siteUrl}/` },
+        { '@type': 'ListItem', position: 3, name: author.name, item: canonicalUrl },
+      ],
+    },
+  ],
+};
 ---
 
 <Layout
@@ -83,6 +115,7 @@ const pageDesc = author.seoDescription || author.bio || `Read articles, analysis
   canonicalUrl={canonicalUrl}
   ogImage={author.avatar}
   ogType="profile"
+  schemaData={authorSchema}
 >
   <div class="min-h-screen flex flex-col font-sans">
     <WebsiteHeaderWrapper

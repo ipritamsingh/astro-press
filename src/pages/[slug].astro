@@ -112,6 +112,65 @@ const initialPage = isPage
       seo: page.data.seo || {},
     }
   : null;
+const postSchema = isPage || isHomeAlias ? null : {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'BlogPosting',
+      '@id': `${canonicalForEntry}#article`,
+      isPartOf: { '@type': 'WebSite', '@id': `${siteUrl}#website` },
+      headline: post.data.title,
+      description: pageDescription,
+      image: pageOgImage ? [pageOgImage] : undefined,
+      datePublished: post.data.pubDate ? new Date(post.data.pubDate).toISOString() : undefined,
+      dateModified: post.data.updatedDate ? new Date(post.data.updatedDate).toISOString() : (post.data.pubDate ? new Date(post.data.pubDate).toISOString() : undefined),
+      mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalForEntry },
+      author: {
+        '@type': 'Person',
+        name: post.data.author || 'Admin',
+      },
+      publisher: {
+        '@type': 'Organization',
+        '@id': `${siteUrl}#organization`,
+        name: siteTitle,
+        logo: siteSettings.logoUrl ? { '@type': 'ImageObject', url: siteSettings.logoUrl } : undefined,
+      },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${canonicalForEntry}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+        { '@type': 'ListItem', position: 2, name: post.data.category || 'Article', item: `${siteUrl}/category/${(post.data.category || 'general').toLowerCase().replace(/\s+/g, '-')}/` },
+        { '@type': 'ListItem', position: 3, name: post.data.title, item: canonicalForEntry },
+      ],
+    },
+  ],
+};
+
+const pageSchema = isPage && !isHomeAlias ? {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebPage',
+      '@id': `${canonicalForEntry}#webpage`,
+      url: canonicalForEntry,
+      name: `${pageTitle} — ${siteTitle}`,
+      description: pageDescription,
+      isPartOf: { '@type': 'WebSite', '@id': `${siteUrl}#website` },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${canonicalForEntry}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+        { '@type': 'ListItem', position: 2, name: page?.data?.title || 'Page', item: canonicalForEntry },
+      ],
+    },
+  ],
+} : null;
+
+const schemaData = postSchema || pageSchema;
 ---
 
 <Layout
@@ -121,6 +180,7 @@ const initialPage = isPage
   ogType={isPage ? 'website' : 'article'}
   canonicalUrl={canonicalForEntry}
   robotsDirective={robotsForEntry}
+  schemaData={schemaData}
 >
   {isPage ? (
     <script is:inline define:vars={{ initialPage }}>

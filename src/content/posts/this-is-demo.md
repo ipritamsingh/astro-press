@@ -10,7 +10,7 @@ tags:
   - Astro
   - Sveltia CMS
 featuredImage: /uploads/1000404269.webp
-excerpt: Title of your new story... Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter. > “A compelling quote
+excerpt: Start writing your engaging article or paste your thoughts here. You can format this block or add columns, quotes, and media blocks.
 readingTime: 9
 template: standard
 blocks:
@@ -90,7 +90,7 @@ blocks:
     settings: {}
 seo:
   metaTitle: This is Demo for all block
-  metaDescription: Title of your new story... Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter. > “A compelling quote
+  metaDescription: Start writing your engaging article or paste your thoughts here. You can format this block or add columns, quotes, and media blocks.
   focusKeyword: ''
   robotsIndex: true
   robotsFollow: true

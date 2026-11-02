@@ -3,6 +3,7 @@ import * as yaml from 'js-yaml';
 import { Post, Page, GutenbergBlock, BlockType, PostSEO, MediaItem } from '../../types/cms';
 import { GutenbergBlockRenderer } from '../common/GutenbergBlockRenderer';
 import { processUploadedFile, getPersistedMediaBlob } from '../../data/mediaStorage';
+import { cleanEditorialExcerpt } from '../../utils/seoUtils';
 
 const EditorImagePreview: React.FC<{ src: string; alt?: string; className?: string; style?: React.CSSProperties }> = ({
   src,
@@ -857,13 +858,13 @@ export const GutenbergEditor: React.FC<Props> = ({
           category: category || 'Technology',
           tags: selectedTags || [],
           featuredImage: featuredImage || '',
-          excerpt: (excerpt || title.trim()).replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim(),
+          excerpt: cleanEditorialExcerpt(excerpt || title.trim()),
           readingTime: Math.max(1, Math.ceil(blocks.length * 0.8)),
           template: template || 'standard',
           blocks: blocks || [],
           seo: {
             metaTitle: seo.metaTitle || title.trim(),
-            metaDescription: (seo.metaDescription || '').replace(/!\[.*?\]\(.*?\)/g, '').replace(/[\r\n]+/g, ' ').trim(),
+            metaDescription: cleanEditorialExcerpt(seo.metaDescription || excerpt || title.trim()),
             focusKeyword: seo.focusKeyword || '',
             robotsIndex: seo.robotsIndex ?? true,
             robotsFollow: seo.robotsFollow ?? true,

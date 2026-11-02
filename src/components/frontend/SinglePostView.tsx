@@ -533,6 +533,8 @@ export const SinglePostView: React.FC<Props> = ({
             src={featuredImgSrc || post.featuredImage}
             alt={post.title}
             className="w-full h-auto object-cover max-h-[500px]"
+            fetchPriority="high"
+            decoding="async"
             onError={async () => {
               if (post.featuredImage) {
                 const fallback = await getPersistedMediaBlob(post.featuredImage);

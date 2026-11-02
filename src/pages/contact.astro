@@ -29,12 +29,41 @@ const initialPage: any = source
   : null;
 
 const seo: any = (source?.data as any)?.seo || {};
+const rawSiteUrl = (siteSettings.siteUrl || '').trim();
+const siteUrl = (rawSiteUrl === 'https://astropress.pages.dev' || !rawSiteUrl ? 'https://astro-press.pages.dev' : rawSiteUrl).replace(/\/+$/, '');
+const canonicalUrl = `${siteUrl}/contact/`;
+const pageTitle = seo.metaTitle || (initialPage ? `${initialPage.title} — ${siteTitle}` : `Contact — ${siteTitle}`);
+const pageDesc = seo.metaDescription || `Get in touch with the ${siteTitle} team.`;
+
+const contactSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'ContactPage',
+      '@id': `${canonicalUrl}#webpage`,
+      url: canonicalUrl,
+      name: pageTitle,
+      description: pageDesc,
+      isPartOf: { '@type': 'WebSite', '@id': `${siteUrl}#website` },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${canonicalUrl}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+        { '@type': 'ListItem', position: 2, name: 'Contact', item: canonicalUrl },
+      ],
+    },
+  ],
+};
 ---
 
 <Layout
-  title={seo.metaTitle || (initialPage ? `${initialPage.title} — ${siteTitle}` : `Contact — ${siteTitle}`)}
-  description={seo.metaDescription || `Get in touch with the ${siteTitle} team.`}
+  title={pageTitle}
+  description={pageDesc}
+  canonicalUrl={canonicalUrl}
   robotsDirective="index, follow"
+  schemaData={contactSchema}
 >
   {initialPage && (
     <script is:inline define:vars={{ initialPage }}>

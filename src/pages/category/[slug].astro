@@ -62,12 +62,48 @@ const allPages = rawCollectionPages.map((p) => ({
 }));
 
 const themeSettings = themeSettingsJson || initialThemeSettings;
-const siteSettings = siteSettingsJson;
+const siteSettings: any = (siteSettingsJson as any) || {};
+const siteTitle = siteSettings.siteTitle || 'AstroPress';
+const rawSiteUrl = (siteSettings.siteUrl || '').trim();
+const siteUrl = (rawSiteUrl === 'https://astropress.pages.dev' || !rawSiteUrl ? 'https://astro-press.pages.dev' : rawSiteUrl).replace(/\/+$/, '');
 const categories = categoriesJson?.categories || initialCategories;
 const menus = menusJson || initialMenus;
+
+const categorySlug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
+const canonicalUrl = `${siteUrl}/category/${categorySlug}/`;
+const pageTitle = category.seoTitle || `${category.name} Archive — ${siteTitle}`;
+const pageDesc = category.seoDescription || category.description || `Browse tutorials, architectural guides, and articles in ${category.name} on ${siteTitle}.`;
+
+const categorySchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'CollectionPage',
+      '@id': `${canonicalUrl}#webpage`,
+      url: canonicalUrl,
+      name: pageTitle,
+      description: pageDesc,
+      isPartOf: { '@type': 'WebSite', '@id': `${siteUrl}#website` },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${canonicalUrl}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+        { '@type': 'ListItem', position: 2, name: category.name, item: canonicalUrl },
+      ],
+    },
+  ],
+};
 ---
 
-<Layout title={`${category.name} Archive — AstroPress`}>
+<Layout
+  title={pageTitle}
+  description={pageDesc}
+  canonicalUrl={canonicalUrl}
+  ogType="website"
+  schemaData={categorySchema}
+>
   <div class="min-h-screen flex flex-col font-sans">
     <WebsiteHeaderWrapper
       client:load

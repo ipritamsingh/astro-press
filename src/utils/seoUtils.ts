@@ -68,3 +68,43 @@ export function calculateRobotsDirective(
 
   return 'index, follow';
 }
+
+/**
+ * Safely sanitizes excerpts and meta descriptions:
+ * - Strips full or truncated markdown images (![...](/... or ![...))
+ * - Strips markdown links, headings, blockquotes, code blocks, HTML tags
+ * - Cleans dangling or unclosed quotes and YAML scalar characters
+ * - Ensures safe plain-text string for YAML frontmatter and SEO meta tags
+ */
+export function cleanEditorialExcerpt(raw?: string, maxLength = 160): string {
+  if (!raw || typeof raw !== 'string') return '';
+  const cleaned = raw
+    // Strip full and truncated markdown images (e.g. ![alt](url) or ![alt](/upload)
+    .replace(/!\[.*?\](?:\(.*?\)|[^\s\n]*)?/g, '')
+    // Strip markdown links but preserve text: [Text](url) -> Text
+    .replace(/\[([^\]]+)\](?:\([^)]*\)|[^\s\n]*)?/g, '$1')
+    // Strip blockquotes: >
+    .replace(/(?:^|\n|\s)>\s*/g, ' ')
+    // Strip markdown headings: #, ##, etc.
+    .replace(/#{1,6}\s*/g, '')
+    // Strip code blocks and backticks
+    .replace(/`{1,3}[^`]*`{1,3}/g, '')
+    .replace(/`/g, '')
+    // Strip raw HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Strip bullet points
+    .replace(/(?:^|\n)\s*[-*+]\s+/g, ' ')
+    // Normalize newlines, tabs, and spaces
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (cleaned.length <= maxLength) {
+    return cleaned.replace(/["'“”‘’]+$/g, '').trim();
+  }
+
+  const truncated = cleaned.slice(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(' ');
+  const safeText = (lastSpace > maxLength * 0.7 ? truncated.slice(0, lastSpace) : truncated).trim();
+  return safeText.replace(/["'“”‘’.,;:!?\-]+$/g, '').trim();
+}

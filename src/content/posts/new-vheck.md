@@ -10,7 +10,7 @@ tags:
   - Astro
   - Sveltia CMS
 featuredImage: /uploads/1000402910.webp
-excerpt: Title of your new story... Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter. ![1000402910](/upload
+excerpt: Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter.
 readingTime: 4
 template: standard
 blocks:
@@ -44,7 +44,7 @@ blocks:
           content: Sveltia CMS works natively with GitHub API and OAuth, saving Markdown files with YAML frontmatter in src/content/posts/ and image assets in public/images/.
 seo:
   metaTitle: New vheck update
-  metaDescription: Title of your new story... Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter. ![1000402910](/upload
+  metaDescription: Start writing your engaging article here. You can add columns, alerts, and quotes from the block inserter.
   focusKeyword: ''
   robotsIndex: true
   robotsFollow: true
