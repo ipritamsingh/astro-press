@@ -17,7 +17,8 @@ export type BlockType =
   | 'spacer'
   | 'embed'
   | 'table'
-  | 'download-button';
+  | 'download-button'
+  | 'pros-cons';
 
 export interface GutenbergBlock {
   id: string;
@@ -55,6 +56,13 @@ export interface GutenbergBlock {
     downloadFileName?: string;
     downloadOpenInNewTab?: boolean;
     downloadAlignment?: 'left' | 'center' | 'right';
+    prosConsData?: {
+      title?: string;
+      prosTitle?: string;
+      consTitle?: string;
+      pros: string[];
+      cons: string[];
+    };
   };
 }
 

@@ -483,6 +483,28 @@ export const GutenbergEditor: React.FC<Props> = ({
           },
         };
         break;
+      case 'pros-cons':
+        newBlock = {
+          id: newId,
+          type: 'pros-cons',
+          content: 'AstroPress Edge vs Traditional CMS Verdict',
+          settings: {
+            prosConsData: {
+              title: 'AstroPress Edge vs Traditional CMS Verdict',
+              prosTitle: 'PROS (ADVANTAGES)',
+              consTitle: 'CONS (DRAWBACKS)',
+              pros: [
+                '100/100 Google PageSpeed & Core Web Vitals',
+                'Zero database latency with Cloudflare Edge',
+                'Built-in RankMath SEO scoring & Schema',
+              ],
+              cons: [
+                'Requires GitHub PAT for production Git push',
+              ],
+            },
+          },
+        };
+        break;
       default:
         newBlock = {
           id: newId,
@@ -806,7 +828,27 @@ export const GutenbergEditor: React.FC<Props> = ({
             .join('\n');
         }
         if (b.type === 'columns') {
-          return (b.settings?.columns || []).map((col) => col.content).join('\n\n');
+          const cols = b.settings?.columns || [];
+          return cols.map((col, idx) => {
+            const raw = (col.content || '').trim();
+            if (/^(Column \d+|Left Column|Right Column|Middle Column)/i.test(raw)) {
+              return raw;
+            }
+            return `Column ${idx + 1} Content:\n${raw}`;
+          }).join('\n\n');
+        }
+        if (b.type === 'pros-cons') {
+          const pd = b.settings?.prosConsData || {
+            title: b.content || 'Pros & Cons Verdict',
+            prosTitle: 'PROS (ADVANTAGES)',
+            consTitle: 'CONS (DRAWBACKS)',
+            pros: [],
+            cons: [],
+          };
+          const titleLine = `### [Verdict] ${pd.title || 'Pros & Cons Verdict'}`;
+          const prosSection = `**${pd.prosTitle || 'PROS (ADVANTAGES)'}:**\n${(pd.pros || []).map((p) => `- ${p}`).join('\n')}`;
+          const consSection = `**${pd.consTitle || 'CONS (DRAWBACKS)'}:**\n${(pd.cons || []).map((c) => `- ${c}`).join('\n')}`;
+          return `${titleLine}\n\n${prosSection}\n\n${consSection}`;
         }
         if (b.type === 'button') return `[${b.content}](${b.settings?.buttonUrl || '#'})`;
         if (b.type === 'alert') return `> **Notice**: ${b.content}`;
@@ -1696,6 +1738,179 @@ export const GutenbergEditor: React.FC<Props> = ({
                   </div>
                 )}
 
+                {/* Dedicated Columns Settings in Inspector */}
+                {selectedBlock.type === 'columns' && (() => {
+                  const currentLayout = selectedBlock.settings.columnLayout || (selectedBlock.settings.columns?.length === 3 ? '33-33-33' : '50-50');
+                  const cols = selectedBlock.settings.columns || [
+                    { id: 'c1', content: 'Column 1 Content' },
+                    { id: 'c2', content: 'Column 2 Content' },
+                  ];
+                  return (
+                    <div className="space-y-4 pb-4 border-b border-slate-200">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                        Column Layout ({cols.length} Columns)
+                      </span>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newCols = cols.length < 2
+                              ? [...cols, { id: 'c2', content: 'Right Column Content:\nProvide secondary context.' }]
+                              : cols.slice(0, 2);
+                            updateBlock(selectedBlock.id, {
+                              settings: { ...selectedBlock.settings, columnLayout: '50-50', columns: newCols },
+                            });
+                          }}
+                          className={`py-1.5 px-2 text-xs font-semibold rounded-lg border transition-colors ${
+                            currentLayout === '50-50' && cols.length === 2
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          2 Cols (50/50)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newCols = cols.length < 3
+                              ? [...cols, ...Array.from({ length: 3 - cols.length }, (_, idx) => ({
+                                  id: `c${cols.length + idx + 1}`,
+                                  content: `Column ${cols.length + idx + 1} Content:\nEdit details here.`,
+                                }))]
+                              : cols;
+                            updateBlock(selectedBlock.id, {
+                              settings: { ...selectedBlock.settings, columnLayout: '33-33-33', columns: newCols },
+                            });
+                          }}
+                          className={`py-1.5 px-2 text-xs font-semibold rounded-lg border transition-colors ${
+                            currentLayout === '33-33-33' || cols.length === 3
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          3 Cols (33%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newCols = cols.length < 2
+                              ? [...cols, { id: 'c2', content: 'Right Column Content:\nProvide secondary context.' }]
+                              : cols.slice(0, 2);
+                            updateBlock(selectedBlock.id, {
+                              settings: { ...selectedBlock.settings, columnLayout: '70-30', columns: newCols },
+                            });
+                          }}
+                          className={`py-1.5 px-2 text-xs font-semibold rounded-lg border transition-colors ${
+                            currentLayout === '70-30'
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          Split (70/30)
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        {cols.length < 3 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newCols = [
+                                ...cols,
+                                {
+                                  id: `c${cols.length + 1}`,
+                                  content: `Column ${cols.length + 1} Content:\nProvide key points.`,
+                                },
+                              ];
+                              updateBlock(selectedBlock.id, {
+                                settings: {
+                                  ...selectedBlock.settings,
+                                  columnLayout: '33-33-33',
+                                  columns: newCols,
+                                },
+                              });
+                            }}
+                            className="flex-1 py-1.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200"
+                          >
+                            + Add Column (3 Cols)
+                          </button>
+                        )}
+                        {cols.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newCols = cols.slice(0, -1);
+                              updateBlock(selectedBlock.id, {
+                                settings: {
+                                  ...selectedBlock.settings,
+                                  columnLayout: '50-50',
+                                  columns: newCols,
+                                },
+                              });
+                            }}
+                            className="flex-1 py-1.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-semibold border border-rose-200"
+                          >
+                            - Remove Column (2 Cols)
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Dedicated Pros & Cons Settings in Inspector */}
+                {selectedBlock.type === 'pros-cons' && (() => {
+                  const pd = selectedBlock.settings.prosConsData || {
+                    title: selectedBlock.content || 'Pros & Cons Verdict',
+                    prosTitle: 'PROS (ADVANTAGES)',
+                    consTitle: 'CONS (DRAWBACKS)',
+                    pros: ['100/100 Google PageSpeed & Core Web Vitals'],
+                    cons: ['Requires GitHub PAT for production Git push'],
+                  };
+                  const updateProsCons = (updates: Partial<typeof pd>) => {
+                    updateBlock(selectedBlock.id, {
+                      content: updates.title !== undefined ? updates.title : selectedBlock.content,
+                      settings: {
+                        ...selectedBlock.settings,
+                        prosConsData: { ...pd, ...updates },
+                      },
+                    });
+                  };
+                  return (
+                    <div className="space-y-4 pb-4 border-b border-slate-200">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <span>Pros & Cons Settings</span>
+                      </span>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Verdict Title</label>
+                        <input
+                          type="text"
+                          value={pd.title || ''}
+                          onChange={(e) => updateProsCons({ title: e.target.value })}
+                          placeholder="Verdict Title..."
+                          className="w-full text-xs border border-slate-200 rounded-lg p-2 bg-slate-50"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateProsCons({ pros: [...(pd.pros || []), 'New advantage...'] })}
+                          className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-semibold border border-emerald-200"
+                        >
+                          + Add Pro
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateProsCons({ cons: [...(pd.cons || []), 'New drawback...'] })}
+                          className="py-1.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-lg text-xs font-semibold border border-rose-200"
+                        >
+                          + Add Con
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Typography & Alignment Controls */}
                 <div className="space-y-3">
                   <span className="text-xs font-bold text-slate-700 block">Typography & Alignment</span>
@@ -1960,6 +2175,13 @@ export const GutenbergEditor: React.FC<Props> = ({
                         >
                           <AlertCircle className="h-4 w-4 text-indigo-600 shrink-0" />
                           <span>Notice Alert</span>
+                        </button>
+                        <button
+                          onClick={() => addBlock('pros-cons')}
+                          className="flex items-center gap-2.5 p-3 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold text-left transition-colors col-span-2"
+                        >
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span>Pros & Cons Comparison Block</span>
                         </button>
                       </div>
                     </div>
@@ -2793,29 +3015,162 @@ export const GutenbergEditor: React.FC<Props> = ({
                         </div>
                       )}
 
-                      {block.type === 'columns' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {(block.settings.columns || []).map((col, cIdx) => (
-                            <div key={col.id || cIdx} className="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
-                              <span className="text-[10px] font-bold text-slate-400 block mb-1">
-                                Column {cIdx + 1}
-                              </span>
-                              <textarea
-                                value={col.content}
-                                onChange={(e) => {
-                                  const newCols = [...(block.settings.columns || [])];
-                                  newCols[cIdx] = { ...newCols[cIdx], content: e.target.value };
-                                  updateBlock(block.id, {
-                                    settings: { ...block.settings, columns: newCols },
-                                  });
-                                }}
-                                rows={3}
-                                className="w-full text-xs text-slate-700 bg-transparent border-none outline-none resize-none leading-relaxed"
-                              />
+                      {block.type === 'columns' && (() => {
+                        const cols = block.settings.columns || [
+                          { id: 'c1', content: 'Column 1 Content:\nEdit key highlights and benefits.' },
+                          { id: 'c2', content: 'Column 2 Content:\nProvide secondary context or data.' },
+                        ];
+                        const layout = block.settings.columnLayout || (cols.length === 3 ? '33-33-33' : '50-50');
+                        const gridClass =
+                          layout === '33-33-33' || cols.length === 3
+                            ? 'grid-cols-1 md:grid-cols-3'
+                            : layout === '70-30'
+                            ? 'grid-cols-1 md:grid-cols-3'
+                            : 'grid-cols-1 md:grid-cols-2';
+
+                        return (
+                          <div className="space-y-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200">
+                            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/80">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                <ColumnsIcon className="h-4 w-4 text-blue-600" />
+                                <span>Multi-Column Layout ({cols.length} Columns)</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <div className="flex items-center bg-white p-0.5 rounded-lg border border-slate-200">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newCols = cols.length < 2
+                                        ? [...cols, { id: 'c2', content: 'Right Column Content:\nProvide secondary context.' }]
+                                        : cols.slice(0, 2);
+                                      updateBlock(block.id, {
+                                        settings: { ...block.settings, columnLayout: '50-50', columns: newCols },
+                                      });
+                                    }}
+                                    className={`px-2 py-0.5 text-[11px] font-semibold rounded ${
+                                      layout === '50-50' && cols.length === 2
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                  >
+                                    50/50
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newCols = cols.length < 3
+                                        ? [...cols, ...Array.from({ length: 3 - cols.length }, (_, idx) => ({
+                                            id: `c${cols.length + idx + 1}`,
+                                            content: `Column ${cols.length + idx + 1} Content:\nEdit details here.`,
+                                          }))]
+                                        : cols;
+                                      updateBlock(block.id, {
+                                        settings: { ...block.settings, columnLayout: '33-33-33', columns: newCols },
+                                      });
+                                    }}
+                                    className={`px-2 py-0.5 text-[11px] font-semibold rounded ${
+                                      layout === '33-33-33' || cols.length === 3
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                  >
+                                    33% (3 Cols)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newCols = cols.length < 2
+                                        ? [...cols, { id: 'c2', content: 'Right Column Content:\nProvide secondary context.' }]
+                                        : cols.slice(0, 2);
+                                      updateBlock(block.id, {
+                                        settings: { ...block.settings, columnLayout: '70-30', columns: newCols },
+                                      });
+                                    }}
+                                    className={`px-2 py-0.5 text-[11px] font-semibold rounded ${
+                                      layout === '70-30'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                  >
+                                    70/30
+                                  </button>
+                                </div>
+                                {cols.length < 3 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newCols = [
+                                        ...cols,
+                                        {
+                                          id: `c${cols.length + 1}`,
+                                          content: `Column ${cols.length + 1} Content:\nProvide key highlights.`,
+                                        },
+                                      ];
+                                      updateBlock(block.id, {
+                                        settings: {
+                                          ...block.settings,
+                                          columnLayout: '33-33-33',
+                                          columns: newCols,
+                                        },
+                                      });
+                                    }}
+                                    className="px-2 py-1 text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition-colors"
+                                  >
+                                    + Add Col
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
+
+                            <div className={`grid ${gridClass} gap-4`}>
+                              {cols.map((col, cIdx) => (
+                                <div
+                                  key={col.id || cIdx}
+                                  className="border border-blue-200/70 rounded-2xl p-3.5 bg-gradient-to-br from-white via-slate-50/70 to-blue-50/20 shadow-2xs space-y-2"
+                                >
+                                  <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                                    <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                                      Column {cIdx + 1}
+                                    </span>
+                                    {cols.length > 2 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const newCols = cols.filter((_, idx) => idx !== cIdx);
+                                          updateBlock(block.id, {
+                                            settings: {
+                                              ...block.settings,
+                                              columnLayout: '50-50',
+                                              columns: newCols,
+                                            },
+                                          });
+                                        }}
+                                        className="text-slate-400 hover:text-rose-600 p-0.5"
+                                        title="Remove this column"
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  <textarea
+                                    value={col.content}
+                                    onChange={(e) => {
+                                      const newCols = [...cols];
+                                      newCols[cIdx] = { ...newCols[cIdx], content: e.target.value };
+                                      updateBlock(block.id, {
+                                        settings: { ...block.settings, columns: newCols },
+                                      });
+                                    }}
+                                    rows={4}
+                                    className="w-full text-xs text-slate-800 bg-transparent border-none outline-none resize-none leading-relaxed"
+                                    placeholder="Enter column content..."
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {block.type === 'alert' && (
                         <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-sm">
@@ -3186,6 +3541,223 @@ export const GutenbergEditor: React.FC<Props> = ({
                                 placeholder="Optional table caption or source..."
                                 className="flex-1 text-xs italic text-slate-600 border-b border-slate-200 focus:border-blue-400 bg-transparent outline-none py-0.5"
                               />
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {block.type === 'pros-cons' && (() => {
+                        const pd = block.settings.prosConsData || {
+                          title: block.content || 'AstroPress Edge vs Traditional CMS Verdict',
+                          prosTitle: 'PROS (ADVANTAGES)',
+                          consTitle: 'CONS (DRAWBACKS)',
+                          pros: [
+                            '100/100 Google PageSpeed & Core Web Vitals',
+                            'Zero database latency with Cloudflare Edge',
+                            'Built-in RankMath SEO scoring & Schema',
+                          ],
+                          cons: [
+                            'Requires GitHub PAT for production Git push',
+                            'New drawback...',
+                          ],
+                        };
+
+                        const updateProsCons = (updates: Partial<typeof pd>) => {
+                          updateBlock(block.id, {
+                            content: updates.title !== undefined ? updates.title : block.content,
+                            settings: {
+                              ...block.settings,
+                              prosConsData: {
+                                ...pd,
+                                ...updates,
+                              },
+                            },
+                          });
+                        };
+
+                        return (
+                          <div className="p-5 bg-white border border-blue-200 rounded-3xl space-y-5 shadow-xs">
+                            {/* Block Header matching user reference */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                              <span className="px-3 py-1 bg-slate-900 text-white rounded-full text-[11px] font-black uppercase tracking-wider">
+                                PROS & CONS
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveBlock(index, 'up');
+                                  }}
+                                  disabled={index === 0}
+                                  className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded"
+                                  title="Move Up"
+                                >
+                                  <ChevronUp className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveBlock(index, 'down');
+                                  }}
+                                  disabled={index === blocks.length - 1}
+                                  className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded"
+                                  title="Move Down"
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    duplicateBlock(index);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-slate-700 rounded"
+                                  title="Duplicate"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedBlockId(block.id);
+                                    setActiveSidebarTab('block');
+                                    setShowMobileInspector(true);
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                                >
+                                  <SlidersHorizontal className="h-3.5 w-3.5 text-blue-600" />
+                                  <span>Block Settings</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteBlock(block.id);
+                                  }}
+                                  className="p-1 text-rose-500 hover:text-rose-700 rounded hover:bg-rose-50"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Verdict Title */}
+                            <div>
+                              <input
+                                type="text"
+                                value={pd.title || ''}
+                                onChange={(e) => updateProsCons({ title: e.target.value })}
+                                className="w-full font-extrabold text-slate-900 text-lg md:text-xl bg-transparent border-b border-transparent focus:border-blue-500 outline-none py-1"
+                                placeholder="AstroPress Edge vs Traditional CMS Verdict"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                              {/* Pros Editor Box */}
+                              <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-3.5">
+                                <div className="flex items-center justify-between pb-1">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                    <input
+                                      type="text"
+                                      value={pd.prosTitle || 'PROS (ADVANTAGES)'}
+                                      onChange={(e) => updateProsCons({ prosTitle: e.target.value })}
+                                      className="font-extrabold text-xs uppercase tracking-wider text-emerald-900 bg-transparent border-b border-emerald-200 focus:border-emerald-600 outline-none py-0.5"
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateProsCons({ pros: [...(pd.pros || []), 'New advantage...'] })}
+                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
+                                  >
+                                    + Add
+                                  </button>
+                                </div>
+                                <div className="space-y-2">
+                                  {(pd.pros || []).map((pro, pIdx) => (
+                                    <div key={pIdx} className="flex items-center gap-2.5 bg-white px-3 py-2 rounded-xl border border-emerald-200/80 shadow-2xs">
+                                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                                      <input
+                                        type="text"
+                                        value={pro}
+                                        onChange={(e) => {
+                                          const newPros = [...pd.pros];
+                                          newPros[pIdx] = e.target.value;
+                                          updateProsCons({ pros: newPros });
+                                        }}
+                                        className="flex-1 text-xs md:text-sm text-slate-800 bg-transparent outline-none font-medium"
+                                        placeholder="Add advantage..."
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const newPros = pd.pros.filter((_, i) => i !== pIdx);
+                                          updateProsCons({ pros: newPros });
+                                        }}
+                                        className="text-slate-300 hover:text-rose-600 p-0.5"
+                                        title="Remove"
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Cons Editor Box */}
+                              <div className="p-4 bg-rose-50/60 border border-rose-200 rounded-2xl space-y-3.5">
+                                <div className="flex items-center justify-between pb-1">
+                                  <div className="flex items-center gap-2">
+                                    <AlertCircle className="h-5 w-5 text-rose-600" />
+                                    <input
+                                      type="text"
+                                      value={pd.consTitle || 'CONS (DRAWBACKS)'}
+                                      onChange={(e) => updateProsCons({ consTitle: e.target.value })}
+                                      className="font-extrabold text-xs uppercase tracking-wider text-rose-900 bg-transparent border-b border-rose-200 focus:border-rose-600 outline-none py-0.5"
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateProsCons({ cons: [...(pd.cons || []), 'New drawback...'] })}
+                                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors"
+                                  >
+                                    + Add
+                                  </button>
+                                </div>
+                                <div className="space-y-2">
+                                  {(pd.cons || []).map((con, cIdx) => (
+                                    <div key={cIdx} className="flex items-center gap-2.5 bg-white px-3 py-2 rounded-xl border border-rose-200/80 shadow-2xs">
+                                      <X className="h-4 w-4 text-rose-600 shrink-0" />
+                                      <input
+                                        type="text"
+                                        value={con}
+                                        onChange={(e) => {
+                                          const newCons = [...pd.cons];
+                                          newCons[cIdx] = e.target.value;
+                                          updateProsCons({ cons: newCons });
+                                        }}
+                                        className="flex-1 text-xs md:text-sm text-slate-800 bg-transparent outline-none font-medium"
+                                        placeholder="Add drawback..."
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const newCons = pd.cons.filter((_, i) => i !== cIdx);
+                                          updateProsCons({ cons: newCons });
+                                        }}
+                                        className="text-slate-300 hover:text-rose-600 p-0.5"
+                                        title="Remove"
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         );

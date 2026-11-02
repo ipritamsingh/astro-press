@@ -170,6 +170,69 @@ export function parseMarkdownToBlocks(markdown: string): GutenbergBlock[] {
       continue;
     }
 
+    // 0.8 Pros & Cons Comparison Block
+    const isProsConsHeader = /^###\s*\[?(?:Verdict|Pros\s*&\s*Cons)\]?:?\s*(.*)$/i.test(sec);
+    const hasProsConsInSec = /\*\*(?:PROS|ADVANTAGES)[\s\S]*?\*\*(?:CONS|DRAWBACKS)/i.test(sec);
+
+    if (isProsConsHeader || hasProsConsInSec) {
+      let title = 'Pros & Cons Verdict';
+      if (isProsConsHeader) {
+        const m = sec.match(/^###\s*\[?(?:Verdict|Pros\s*&\s*Cons)\]?:?\s*(.*)$/i);
+        if (m && m[1].trim()) title = m[1].trim();
+      }
+
+      let combined = sec;
+      let consumed = 1;
+
+      while (i + consumed < sections.length) {
+        const next = sections[i + consumed].trim();
+        if (/\*\*(?:PROS|ADVANTAGES|CONS|DRAWBACKS)/i.test(next) || next.startsWith('- ') || next.startsWith('* ')) {
+          combined += '\n\n' + next;
+          consumed++;
+        } else {
+          break;
+        }
+      }
+
+      const prosMatch = combined.match(/\*\*(PROS[^*]*)\*\*:?([\s\S]*?)(?=\*\*(?:CONS|DRAWBACKS)|$)/i);
+      const consMatch = combined.match(/\*\*(CONS[^*]*)\*\*:?([\s\S]*?)$/i);
+
+      if (prosMatch || consMatch || isProsConsHeader) {
+        const prosTitle = prosMatch ? prosMatch[1].trim() : 'PROS (ADVANTAGES)';
+        const consTitle = consMatch ? consMatch[1].trim() : 'CONS (DRAWBACKS)';
+
+        const extractList = (raw?: string) => {
+          if (!raw) return [];
+          return raw
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => /^[-*+✓xX]\s+/.test(line))
+            .map((line) => line.replace(/^[-*+✓xX]\s+/, '').trim())
+            .filter(Boolean);
+        };
+
+        const pros = extractList(prosMatch?.[2]);
+        const cons = extractList(consMatch?.[2]);
+
+        blocks.push({
+          id: `md-pc-${blocks.length}`,
+          type: 'pros-cons',
+          content: title,
+          settings: {
+            prosConsData: {
+              title,
+              prosTitle,
+              consTitle,
+              pros: pros.length > 0 ? pros : ['Fast performance and instant indexing'],
+              cons: cons.length > 0 ? cons : ['Requires initial setup'],
+            },
+          },
+        });
+        i += consumed;
+        continue;
+      }
+    }
+
     // 1. Divider Block: --- or *** or ___
     if (sec === '---' || sec === '***' || sec === '___') {
       blocks.push({
@@ -274,13 +337,31 @@ export function parseMarkdownToBlocks(markdown: string): GutenbergBlock[] {
       continue;
     }
 
-    // 7. Multi-column Block:
-    // Section 1: Left Column Content: ...
-    // Section 2: Right Column Content: ...
-    // Or single section containing both Left Column and Right Column
+    // 7. Multi-column Block (2 or 3 columns):
     const isCol1 = /^(\*\*|\b)?(Left Column|Column 1)(\s+Content)?(\*\*|:|\b)/i.test(sec);
     const nextSec = i + 1 < sections.length ? sections[i + 1].trim() : '';
-    const isCol2 = /^(\*\*|\b)?(Right Column|Column 2)(\s+Content)?(\*\*|:|\b)/i.test(nextSec);
+    const thirdSec = i + 2 < sections.length ? sections[i + 2].trim() : '';
+    const isCol2 = /^(\*\*|\b)?(Right Column|Column 2|Middle Column)(\s+Content)?(\*\*|:|\b)/i.test(nextSec);
+    const isCol3 = /^(\*\*|\b)?(Right Column|Column 3)(\s+Content)?(\*\*|:|\b)/i.test(thirdSec);
+
+    if (isCol1 && isCol2 && isCol3) {
+      blocks.push({
+        id: `md-cols-${blocks.length}`,
+        type: 'columns',
+        content: '',
+        settings: {
+          columnLayout: '33-33-33',
+          columns: [
+            { id: 'c1', content: sec },
+            { id: 'c2', content: nextSec },
+            { id: 'c3', content: thirdSec },
+          ],
+        },
+      });
+      i += 3;
+      continue;
+    }
+
     if (isCol1 && isCol2) {
       blocks.push({
         id: `md-cols-${blocks.length}`,
@@ -297,6 +378,24 @@ export function parseMarkdownToBlocks(markdown: string): GutenbergBlock[] {
       i += 2;
       continue;
     }
+
+    if (/Column 1/i.test(sec) && /Column 2/i.test(sec)) {
+      const parts = sec.split(/(?=Column [23]:?|Right Column:?|Middle Column:?)/i);
+      if (parts.length >= 2) {
+        blocks.push({
+          id: `md-cols-${blocks.length}`,
+          type: 'columns',
+          content: '',
+          settings: {
+            columnLayout: parts.length >= 3 ? '33-33-33' : '50-50',
+            columns: parts.map((p, idx) => ({ id: `c${idx + 1}`, content: p.trim() })),
+          },
+        });
+        i++;
+        continue;
+      }
+    }
+
     if (/Left Column/i.test(sec) && /Right Column/i.test(sec)) {
       const parts = sec.split(/(?=Right Column)/i);
       if (parts.length === 2) {
@@ -644,10 +743,10 @@ export const GutenbergBlockRenderer: React.FC<Props> = ({
                 { id: 'c1', content: 'Column 1 Content' },
                 { id: 'c2', content: 'Column 2 Content' },
               ];
-              const layout = settings.columnLayout || '50-50';
+              const layout = settings.columnLayout || (cols.length === 3 ? '33-33-33' : '50-50');
 
               const gridClass =
-                layout === '33-33-33'
+                layout === '33-33-33' || cols.length === 3
                   ? 'grid-cols-1 md:grid-cols-3'
                   : layout === '70-30'
                   ? 'grid-cols-1 md:grid-cols-3'
@@ -661,9 +760,14 @@ export const GutenbergBlockRenderer: React.FC<Props> = ({
                     return (
                       <div
                         key={col.id || idx}
-                        className={`rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs ${colSpan}`}
+                        className={`rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/70 to-blue-50/30 p-6 shadow-xs hover:shadow-md transition-all duration-200 ${colSpan} flex flex-col`}
                       >
-                        <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed text-sm md:text-base whitespace-pre-line">
+                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80">
+                            Column {idx + 1}
+                          </span>
+                        </div>
+                        <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed text-sm md:text-base whitespace-pre-line flex-1">
                           {renderInlineMarkdown(col.content)}
                         </div>
                       </div>
@@ -859,21 +963,21 @@ export const GutenbergBlockRenderer: React.FC<Props> = ({
               };
 
               return (
-                <div key={id} className="my-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+                <div key={id} className="my-6 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-700 divide-y divide-slate-200 border-collapse">
                       {tableData.caption && (
-                        <caption className="py-2.5 px-4 text-xs italic text-slate-500 text-left bg-slate-50/70 border-b border-slate-200">
+                        <caption className="py-2.5 px-4 text-xs italic text-slate-500 text-left bg-slate-50/90 border-b border-slate-200">
                           {tableData.caption}
                         </caption>
                       )}
                       {tableData.hasHeader !== false && tableData.headers && tableData.headers.length > 0 && (
-                        <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-700">
-                          <tr className="divide-x divide-slate-200">
+                        <thead className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white font-bold text-xs uppercase tracking-wider">
+                          <tr className="divide-x divide-slate-700/50">
                             {tableData.headers.map((h, hIdx) => (
                               <th
                                 key={hIdx}
-                                className={`px-4 py-3 font-semibold ${getAlignClass(alignments[hIdx])}`}
+                                className={`px-4 py-3 font-semibold text-white ${getAlignClass(alignments[hIdx])}`}
                               >
                                 {renderInlineMarkdown(h)}
                               </th>
@@ -885,12 +989,12 @@ export const GutenbergBlockRenderer: React.FC<Props> = ({
                         {tableData.rows.map((row, rIdx) => (
                           <tr
                             key={rIdx}
-                            className="divide-x divide-slate-200 hover:bg-slate-50/70 transition-colors odd:bg-white even:bg-slate-50/30"
+                            className="divide-x divide-slate-200 hover:bg-blue-50/40 transition-colors odd:bg-white even:bg-slate-50/70"
                           >
                             {row.map((cell, cIdx) => (
                               <td
                                 key={cIdx}
-                                className={`px-4 py-3 leading-relaxed ${getAlignClass(alignments[cIdx])}`}
+                                className={`px-4 py-3 leading-relaxed text-slate-800 ${getAlignClass(alignments[cIdx])}`}
                               >
                                 {renderInlineMarkdown(cell)}
                               </td>
@@ -899,6 +1003,83 @@ export const GutenbergBlockRenderer: React.FC<Props> = ({
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              );
+            }
+
+            case 'pros-cons': {
+              const pd = settings.prosConsData || {
+                title: content || 'Pros & Cons Verdict',
+                prosTitle: 'PROS (ADVANTAGES)',
+                consTitle: 'CONS (DRAWBACKS)',
+                pros: [
+                  '100/100 Google PageSpeed & Core Web Vitals',
+                  'Zero database latency with Cloudflare Edge',
+                  'Built-in RankMath SEO scoring & Schema',
+                ],
+                cons: [
+                  'Requires GitHub PAT for production Git push',
+                ],
+              };
+
+              return (
+                <div key={id} className="my-8 rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 shadow-sm space-y-6">
+                  {pd.title && (
+                    <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                      <div className="p-2 rounded-xl bg-slate-900 text-white">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                      </div>
+                      <h3 className="font-extrabold text-slate-900 text-lg md:text-xl tracking-tight">
+                        {pd.title}
+                      </h3>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Pros Box */}
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 md:p-6 shadow-2xs space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-emerald-600 text-white">
+                            <Check className="h-4 w-4" />
+                          </div>
+                          <span className="font-extrabold text-xs uppercase tracking-wider text-emerald-900">
+                            {pd.prosTitle || 'PROS (ADVANTAGES)'}
+                          </span>
+                        </div>
+                      </div>
+                      <ul className="space-y-3">
+                        {(pd.pros || []).map((pro, pIdx) => (
+                          <li key={pIdx} className="flex items-start gap-2.5 text-sm md:text-base text-emerald-950 font-normal">
+                            <Check className="h-4 w-4 text-emerald-600 shrink-0 mt-1" />
+                            <span>{renderInlineMarkdown(pro)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Cons Box */}
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-5 md:p-6 shadow-2xs space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-rose-600 text-white">
+                            <XCircle className="h-4 w-4" />
+                          </div>
+                          <span className="font-extrabold text-xs uppercase tracking-wider text-rose-900">
+                            {pd.consTitle || 'CONS (DRAWBACKS)'}
+                          </span>
+                        </div>
+                      </div>
+                      <ul className="space-y-3">
+                        {(pd.cons || []).map((con, cIdx) => (
+                          <li key={cIdx} className="flex items-start gap-2.5 text-sm md:text-base text-rose-950 font-normal">
+                            <XCircle className="h-4 w-4 text-rose-600 shrink-0 mt-1" />
+                            <span>{renderInlineMarkdown(con)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               );
