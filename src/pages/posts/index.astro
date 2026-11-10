@@ -14,7 +14,7 @@ const rawCollectionPosts = await getCollection('posts');
 const rawCollectionPages = await getCollection('pages');
 
 const allPublishedPosts = rawCollectionPosts
-  .filter((p) => !p.data.draft && p.data.status !== 'draft')
+  .filter((p) => !p.data.draft && p.data.status !== 'draft' && p.data.status !== 'trash')
   .map((p) => ({
     id: p.id,
     title: p.data.title,

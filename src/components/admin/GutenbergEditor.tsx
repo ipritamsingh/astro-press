@@ -112,6 +112,8 @@ interface Props {
   mediaLibrary: MediaItem[];
   existingSlugs?: string[];
   deploymentSettings?: DeploymentSettings;
+  permalinkStructure?: string;
+  siteUrl?: string;
   sessionToken?: string;
   onAddMedia?: (item: MediaItem) => void;
   onUpdateMedia?: (id: string, updates: Partial<MediaItem>) => void;
@@ -136,6 +138,8 @@ export const GutenbergEditor: React.FC<Props> = ({
     cloudflareWorkerUrl: '',
     autoDeployOnPublish: false,
   },
+  permalinkStructure = '/%postname%/',
+  siteUrl = 'https://astro-press.pages.dev',
   sessionToken = '',
   onAddMedia,
   onUpdateMedia,
@@ -2432,23 +2436,62 @@ export const GutenbergEditor: React.FC<Props> = ({
                   placeholder="Add Title..."
                   className="w-full text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 border-none outline-none focus:ring-0 placeholder-slate-300 font-serif-custom"
                 />
-                <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 font-mono-custom bg-slate-50 p-2 rounded-lg border border-slate-100">
-                  <span className="font-semibold text-slate-400">Permalink:</span>
-                  <span className="text-slate-400">{isPage ? '/' : '/posts/'}</span>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => {
-                      setIsSlugManuallyEdited(true);
-                      setSlug(
-                        e.target.value
-                          .toLowerCase()
-                          .replace(/[^a-z0-9-]+/g, '-')
-                      );
-                    }}
-                    className="bg-transparent border-b border-slate-300 focus:border-blue-600 outline-none px-1 text-blue-600 font-medium flex-1 min-w-[120px]"
-                  />
-                </div>
+                {(() => {
+                  const getPermalinkPrefix = () => {
+                    if (isPage) return '/';
+                    const struct = permalinkStructure || '/%postname%/';
+                    if (struct === '/posts/%postname%/') return '/posts/';
+                    if (struct === '/%year%/%month%/%day%/%postname%/') {
+                      const d = new Date(pubDate || Date.now());
+                      const year = d.getFullYear();
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+                      return `/${year}/${month}/${day}/`;
+                    }
+                    if (struct === '/%year%/%month%/%postname%/') {
+                      const d = new Date(pubDate || Date.now());
+                      const year = d.getFullYear();
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      return `/${year}/${month}/`;
+                    }
+                    if (struct === '/archives/%post_id%/') return '/archives/';
+                    return '/';
+                  };
+                  const prefix = getPermalinkPrefix();
+                  return (
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 font-mono-custom bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <span className="font-semibold text-slate-400">Permalink:</span>
+                      <span className="text-slate-500 font-medium">{prefix}</span>
+                      <input
+                        type="text"
+                        value={slug}
+                        onChange={(e) => {
+                          setIsSlugManuallyEdited(true);
+                          setSlug(
+                            e.target.value
+                              .toLowerCase()
+                              .replace(/[^a-z0-9-]+/g, '-')
+                          );
+                        }}
+                        placeholder="post-slug"
+                        className="bg-transparent border-b border-slate-300 focus:border-blue-600 outline-none px-1 text-blue-600 font-medium flex-1 min-w-[120px]"
+                      />
+                      <span className="text-slate-400">/</span>
+                      {slug && (
+                        <a
+                          href={`${prefix}${slug}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 hover:underline ml-1"
+                          title="View live URL preview"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          <span>Preview</span>
+                        </a>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <div className="mb-8 space-y-3 pb-6 border-b border-slate-100">

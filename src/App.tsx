@@ -1580,6 +1580,8 @@ export default function App(props: AppProps = {}) {
           mediaLibrary={cms.media}
           existingSlugs={cms.posts.filter((p) => p.id !== editingPost.id).map((p) => p.slug)}
           deploymentSettings={cms.deploymentSettings}
+          permalinkStructure={cms.siteSettings?.permalinkStructure}
+          siteUrl={cms.siteSettings?.siteUrl}
           sessionToken={sessionGitHubToken}
           onAddMedia={(item) => cms.addMediaItem(item)}
           onUpdateMedia={(id, updates) => cms.updateMediaItem(id, updates)}
@@ -1599,6 +1601,8 @@ export default function App(props: AppProps = {}) {
           mediaLibrary={cms.media}
           existingSlugs={cms.pages.filter((p) => p.id !== editingPage.id).map((p) => p.slug)}
           deploymentSettings={cms.deploymentSettings}
+          permalinkStructure={cms.siteSettings?.pagePermalinkStructure || cms.siteSettings?.permalinkStructure}
+          siteUrl={cms.siteSettings?.siteUrl}
           sessionToken={sessionGitHubToken}
           onAddMedia={(item) => cms.addMediaItem(item)}
           onUpdateMedia={(id, updates) => cms.updateMediaItem(id, updates)}

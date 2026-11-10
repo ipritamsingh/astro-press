@@ -381,6 +381,19 @@ export const HomepageView: React.FC<Props> = ({
                 return a.name.localeCompare(b.name);
               });
 
+            const desktopColsClass =
+              showcaseCategories.length === 1
+                ? 'lg:grid-cols-1'
+                : showcaseCategories.length === 2
+                  ? 'lg:grid-cols-2'
+                  : showcaseCategories.length === 3
+                    ? 'lg:grid-cols-3'
+                    : showcaseCategories.length === 4
+                      ? 'lg:grid-cols-4'
+                      : showcaseCategories.length === 5
+                        ? 'lg:grid-cols-5'
+                        : 'lg:grid-cols-6';
+
             sectionContent = (
               <section key={section.id} className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -394,8 +407,10 @@ export const HomepageView: React.FC<Props> = ({
                   </div>
                 </div>
 
-                {/* Compact Category Navigation Strip (Inspired by Reference Design) */}
-                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none sm:flex-wrap">
+                {/* Category Navigation: Full-width balanced grid on desktop, smooth horizontal strip on mobile */}
+                <div
+                  className={`flex sm:grid items-stretch gap-2.5 sm:gap-4 overflow-x-auto pb-2 scrollbar-none sm:overflow-visible sm:pb-0 sm:grid-cols-2 md:grid-cols-3 ${desktopColsClass} w-full`}
+                >
                   {showcaseCategories.map((cat) => {
                     const count = publishedPosts.filter((p) => {
                       const pCat = (p.category || '').trim().toLowerCase();
@@ -408,21 +423,24 @@ export const HomepageView: React.FC<Props> = ({
                     return (
                       <button
                         key={cat.id}
+                        type="button"
                         onClick={() => onSelectCategory(cat)}
-                        className="group shrink-0 inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-blue-500 hover:bg-blue-50/20 shadow-2xs transition-all cursor-pointer"
+                        data-category-slug={cat.slug}
+                        aria-label={`Browse ${cat.name} (${count} articles)`}
+                        className="group shrink-0 sm:shrink min-w-[155px] sm:min-w-0 w-auto sm:w-full flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 bg-white hover:border-blue-500 hover:bg-blue-50/25 shadow-2xs hover:shadow-md transition-all cursor-pointer text-left"
                         title={`Browse ${cat.name} (${count} articles)`}
                       >
                         <div
-                          className="p-1.5 rounded-lg shrink-0 transition-transform group-hover:scale-110"
-                          style={{ backgroundColor: `${cat.color || '#2563eb'}12`, color: cat.color || '#2563eb' }}
+                          className="p-2 sm:p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110 shadow-2xs"
+                          style={{ backgroundColor: `${cat.color || '#2563eb'}14`, color: cat.color || '#2563eb' }}
                         >
-                          <CategoryIcon category={cat} className="h-4 w-4" size={16} />
+                          <CategoryIcon category={cat} className="h-4 w-4 sm:h-5 sm:w-5" size={20} />
                         </div>
-                        <div className="text-left">
-                          <span className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors block leading-tight">
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-blue-600 transition-colors block leading-tight truncate">
                             {cat.name}
                           </span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">
+                          <span className="text-[10px] sm:text-xs text-slate-400 block mt-0.5 font-medium">
                             {count} {count === 1 ? 'article' : 'articles'}
                           </span>
                         </div>

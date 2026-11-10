@@ -19,6 +19,9 @@ export async function getStaticPaths() {
   
   const postPaths = posts
     .filter((post) => {
+      if (post.data.draft || post.data.status === 'draft' || post.data.status === 'trash') {
+        return false;
+      }
       const slug = post.data.slug || post.id.replace(/\.md$/, '');
       return !reserved.has(slug);
     })
@@ -29,6 +32,9 @@ export async function getStaticPaths() {
 
   const pagePaths = pages
     .filter((page) => {
+      if (page.data.draft || (page.data as any).status === 'draft' || (page.data as any).status === 'trash') {
+        return false;
+      }
       const slug = page.data.slug || page.id.replace(/\.md$/, '');
       return !reserved.has(slug);
     })

@@ -12,10 +12,12 @@ const siteUrl: string = (rawSiteUrl === 'https://astropress.pages.dev' || !rawSi
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
-  return posts.map((post) => ({
-    params: { slug: post.data.slug || post.id.replace(/\.md$/, '') },
-    props: { post },
-  }));
+  return posts
+    .filter((post) => !post.data.draft && post.data.status !== 'draft' && post.data.status !== 'trash')
+    .map((post) => ({
+      params: { slug: post.data.slug || post.id.replace(/\.md$/, '') },
+      props: { post },
+    }));
 }
 
 const { post } = Astro.props;
