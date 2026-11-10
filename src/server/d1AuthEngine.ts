@@ -11,6 +11,7 @@ export interface Env {
   RESEND_FROM_EMAIL?: string;
   SITE_URL?: string;
   SESSION_SECRET?: string;
+  ENVIRONMENT?: string;
 }
 
 // Security Constants
@@ -752,6 +753,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         } catch (mailErr) {
           console.error('[D1 Auth Engine] Failed to dispatch password reset email due to network error.');
         }
+      } else if (env.ENVIRONMENT !== 'production') {
+        // devResetUrl: logged strictly in non-production environments for developer verification without email provider
+        console.log('[D1 Auth Engine DEV] devResetUrl:', resetUrl);
       }
 
       return jsonResponse({
